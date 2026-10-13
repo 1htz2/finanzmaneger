@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+# Data (never commit personal finances)
+backend/data/
+data/
+*.db
+*.db-wal
+*.db-shm
+# Node
+node_modules/
+frontend/dist/
+frontend/dev-dist/
+# Env
+.env
+.env.local
+# Test artifacts
+e2e/artifacts/
+playwright-report/
+test-results/
