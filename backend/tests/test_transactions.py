@@ -300,3 +300,5 @@ def test_recurring_suggestion_and_marking(api: Api, frozen: Clock) -> None:
     api.ok(api.post("/api/transactions/mark-recurring", {"transaction_ids": netflix["transaction_ids"]}))
     marked = api.ok(api.get("/api/transactions", params={"is_recurring": True}))
     assert [t["description"] for t in marked["items"]] == ["Netflix", "Netflix"]
+    remaining = api.ok(api.get("/api/transactions/recurring-suggestions"))
+    assert "Netflix" not in [s["label"] for s in remaining]

@@ -553,6 +553,7 @@ def recurring_suggestions(db: Session) -> list[RecurringSuggestionOut]:
         select(Transaction).where(
             Transaction.type == TransactionType.EXPENSE,
             Transaction.recurring_expense_id.is_(None),
+            Transaction.is_recurring.is_(False),
         )
     ).unique()
     groups: dict[str, list[Transaction]] = defaultdict(list)
