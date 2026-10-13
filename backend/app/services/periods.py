@@ -208,56 +208,75 @@ class PeriodImpact:
     leftover_before_cents: int
     leftover_after_cents: int
     reserve_delta_cents: int
+    reserve_balance_after_cents: int
+    buckets_changed: bool
+
+
+ClosedSnapshot = dict[int, dict[Bucket, BucketStatus]]
+
+
+def snapshot_closed(db: Session, period_ids: Iterable[int | None]) -> ClosedSnapshot:
+    """Bucket state of the closed periods among ``period_ids``. Take it BEFORE a change."""
+    snap: ClosedSnapshot = {}
+    for period_id in {p for p in period_ids if p is not None}:
+        if get_period(db, period_id).status == PeriodStatus.CLOSED:
+            snap[period_id] = bucket_statuses(db, period_id)
+    return snap
 
 
 def settle_closed_periods(
     db: Session,
-    touched_period_ids: Iterable[int | None],
+    before: ClosedSnapshot,
     *,
     action: CorrectionAction,
     transaction_id: int | None,
     confirm: bool,
     reason: str,
 ) -> list[PeriodImpact]:
-    """Call after mutating data that belongs to the given periods.
+    """Call after mutating data of the periods captured in ``before``.
 
-    For every closed period whose result changed, the reserve difference is booked
-    as an explicit correction with an audit row. Without ``confirm`` nothing is
-    booked: a ``CorrectionRequiredError`` carries the preview and the caller's
-    transaction is rolled back by the request scope.
+    Any change to a closed period, even one that only moves money between its
+    buckets, needs ``confirm``. Without it a ``CorrectionRequiredError`` carries
+    the preview and the request's transaction is rolled back. With it, the
+    reserve difference is booked as a correction row and an audit row is written.
     """
     db.flush()
-    impacts: list[tuple[BudgetPeriod, PeriodImpact]] = []
-    for period_id in sorted({p for p in touched_period_ids if p is not None}):
+    changed: list[tuple[BudgetPeriod, int, int, bool]] = []
+    for period_id, statuses_before in sorted(before.items()):
         period = get_period(db, period_id)
-        if period.status != PeriodStatus.CLOSED:
-            continue
-        before = period.closing_leftover_cents
-        assert before is not None
-        after = live_closing(db, period.id).leftover
-        if before == after:
-            continue
+        statuses_after = bucket_statuses(db, period_id)
+        leftover_before = period.closing_leftover_cents
+        assert leftover_before is not None
+        leftover_after = compute_closing(statuses_after).leftover
+        buckets_changed = statuses_after != statuses_before
+        if buckets_changed or leftover_after != leftover_before:
+            changed.append((period, leftover_before, leftover_after, buckets_changed))
+    if not changed:
+        return []
+
+    balance = ledgers.reserve_balance(db)
+    impacts: list[PeriodImpact] = []
+    for period, leftover_before, leftover_after, buckets_changed in changed:
+        delta = max(leftover_after, 0) - max(leftover_before, 0)
+        balance += delta
         impacts.append(
-            (
-                period,
-                PeriodImpact(
-                    period_id=period.id,
-                    label=period_label(period),
-                    leftover_before_cents=before,
-                    leftover_after_cents=after,
-                    reserve_delta_cents=max(after, 0) - max(before, 0),
-                ),
+            PeriodImpact(
+                period_id=period.id,
+                label=period_label(period),
+                leftover_before_cents=leftover_before,
+                leftover_after_cents=leftover_after,
+                reserve_delta_cents=delta,
+                reserve_balance_after_cents=balance,
+                buckets_changed=buckets_changed,
             )
         )
-    if not impacts:
-        return []
     if not confirm:
         raise CorrectionRequiredError(
             "Diese Änderung betrifft einen abgeschlossenen Budgetzeitraum. Bitte bestätige die Korrektur.",
-            details=[i.__dict__ for _, i in impacts],
+            details=[i.__dict__ for i in impacts],
         )
     now = clock.now()
-    for period, impact in impacts:
+    for (period, *_), impact in zip(changed, impacts, strict=True):
         ledgers.book_reserve(
             db,
             impact.reserve_delta_cents,
@@ -280,7 +299,7 @@ def settle_closed_periods(
         )
         period.closing_leftover_cents = impact.leftover_after_cents
     db.flush()
-    return [i for _, i in impacts]
+    return impacts
 
 
 # ------------------------------------------------------- salary transition
@@ -591,6 +610,7 @@ def cover_closed_deficit(
         raise DomainValidationError(f"Höchstens {format_eur(deficit)} können gedeckt werden.")
     if amount > ledgers.reserve_balance(db):
         raise DomainValidationError("Die Reserve reicht dafür nicht aus.", code="reserve_insufficient")
+    before = snapshot_closed(db, [period.id])
     now = clock.now()
     txn = Transaction(
         type=TransactionType.TRANSFER,
@@ -624,7 +644,7 @@ def cover_closed_deficit(
     )
     settle_closed_periods(
         db,
-        [period.id],
+        before,
         action=CorrectionAction.TRANSFER,
         transaction_id=txn.id,
         confirm=True,

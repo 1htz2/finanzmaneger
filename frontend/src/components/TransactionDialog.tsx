@@ -66,6 +66,7 @@ export function TransactionDialog({
   const [description, setDescription] = useState(edit?.description ?? '')
   const [merchant, setMerchant] = useState(edit?.merchant ?? '')
   const [when, setWhen] = useState(edit ? isoToLocalInput(edit.occurred_at) : nowLocalInput())
+  const [whenEdited, setWhenEdited] = useState(false)
   const [isRecurring, setIsRecurring] = useState(edit?.is_recurring ?? false)
   const [target, setTarget] = useState<Pot>('period')
   const [bucket, setBucket] = useState<SpendingBucket>('leisure')
@@ -100,7 +101,9 @@ export function TransactionDialog({
       setInvalid(true)
       throw new Error('Bitte einen gültigen Betrag eingeben, z. B. 12,50')
     }
-    const occurred_at = localInputToApi(when)
+    // An untouched time on a new booking means "now", to the second. The input only
+    // shows minutes, and rounding down could place it before a salary booked moments ago.
+    const occurred_at = !edit && !whenEdited ? new Date().toISOString() : localInputToApi(when)
     if (edit) {
       const body =
         edit.type === 'expense'
@@ -350,7 +353,10 @@ export function TransactionDialog({
                 id="tx-when"
                 type="datetime-local"
                 value={when}
-                onChange={(e) => setWhen(e.target.value)}
+                onChange={(e) => {
+                  setWhen(e.target.value)
+                  setWhenEdited(true)
+                }}
                 disabled={moneyLocked}
                 required
               />

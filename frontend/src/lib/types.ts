@@ -324,4 +324,6 @@ export interface CorrectionImpact {
   leftover_before_cents: number
   leftover_after_cents: number
   reserve_delta_cents: number
+  reserve_balance_after_cents: number
+  buckets_changed: boolean
 }

@@ -54,6 +54,7 @@ from app.services.periods import (
     require_active_period,
     require_period_at,
     settle_closed_periods,
+    snapshot_closed,
 )
 
 POT_LABELS = {Pot.PERIOD: "Budget", Pot.RESERVE: "Reserve", Pot.SAVINGS: "Sparen"}
@@ -177,6 +178,7 @@ def create_expense(db: Session, data: ExpenseIn) -> TransactionOut:
             raise DomainValidationError("Fixkosten-Eintrag nicht gefunden")
     category = _category(db, data.category_id, {CategoryKind.FIXED, CategoryKind.LEISURE})
     period = require_period_at(db, data.occurred_at)
+    before = snapshot_closed(db, [period.id])
     txn = Transaction(
         type=TransactionType.EXPENSE,
         occurred_at=data.occurred_at,
@@ -193,7 +195,7 @@ def create_expense(db: Session, data: ExpenseIn) -> TransactionOut:
     db.flush()
     settle_closed_periods(
         db,
-        [period.id],
+        before,
         action=CorrectionAction.CREATE,
         transaction_id=txn.id,
         confirm=data.confirm_correction,
@@ -232,14 +234,19 @@ def update_transaction(db: Session, txn_id: int, data: TransactionUpdate) -> Tra
         db.refresh(txn)
         return to_out(txn)
 
-    old_period_id = txn.period_id
+    new_period_id = (
+        require_period_at(db, fields["occurred_at"]).id
+        if fields.get("occurred_at") is not None
+        else txn.period_id
+    )
+    before = snapshot_closed(db, [txn.period_id, new_period_id])
     if "category_id" in fields and fields["category_id"] is not None:
         category = _category(db, fields["category_id"], {CategoryKind.FIXED, CategoryKind.LEISURE})
         txn.category_id = category.id
         txn.bucket = Bucket(category.kind.value)
     if fields.get("occurred_at") is not None:
         txn.occurred_at = fields["occurred_at"]
-        txn.period_id = require_period_at(db, txn.occurred_at).id
+        txn.period_id = new_period_id
     if fields.get("amount_cents") is not None:
         txn.amount_cents = fields["amount_cents"]
     for key in ("description", "merchant", "is_recurring"):
@@ -248,7 +255,7 @@ def update_transaction(db: Session, txn_id: int, data: TransactionUpdate) -> Tra
     db.flush()
     settle_closed_periods(
         db,
-        [old_period_id, txn.period_id],
+        before,
         action=CorrectionAction.UPDATE,
         transaction_id=txn.id,
         confirm=data.confirm_correction,
@@ -267,13 +274,13 @@ def delete_transaction(db: Session, txn_id: int, *, confirm: bool, reason: str |
             "Sparen nachvollziehbar bleiben.",
             code="use_reversal",
         )
-    period_id = txn.period_id
+    before = snapshot_closed(db, [txn.period_id])
     label = f"Ausgabe „{txn.description}“ ({format_eur(txn.amount_cents)}) gelöscht"
     db.delete(txn)
     db.flush()
     settle_closed_periods(
         db,
-        [period_id],
+        before,
         action=CorrectionAction.DELETE,
         transaction_id=None,
         confirm=confirm,
@@ -304,6 +311,7 @@ def create_income(db: Session, data: IncomeIn) -> TransactionOut:
         if data.target == Pot.PERIOD
         else period_at(db, data.occurred_at)
     )
+    before = snapshot_closed(db, [period.id] if period and data.target == Pot.PERIOD else [])
     txn = Transaction(
         type=TransactionType.INCOME,
         occurred_at=data.occurred_at,
@@ -352,7 +360,7 @@ def create_income(db: Session, data: IncomeIn) -> TransactionOut:
     if data.target == Pot.PERIOD:
         settle_closed_periods(
             db,
-            [txn.period_id],
+            before,
             action=CorrectionAction.CREATE,
             transaction_id=txn.id,
             confirm=data.confirm_correction,
@@ -480,6 +488,7 @@ def reverse_transaction(db: Session, txn_id: int, *, confirm: bool, reason: str 
     ).all()
     savings_rows = db.scalars(select(SavingsEntry).where(SavingsEntry.transaction_id == txn.id)).all()
 
+    before = snapshot_closed(db, [a.period_id for a in allocations])
     reserve_delta = -sum(r.amount_cents for r in reserve_rows)
     if reserve_delta < 0 and ledgers.reserve_balance(db) + reserve_delta < 0:
         raise DomainValidationError(
@@ -529,7 +538,7 @@ def reverse_transaction(db: Session, txn_id: int, *, confirm: bool, reason: str 
     db.flush()
     settle_closed_periods(
         db,
-        [a.period_id for a in allocations],
+        before,
         action=CorrectionAction.REVERSAL,
         transaction_id=txn.id,
         confirm=confirm,

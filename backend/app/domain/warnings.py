@@ -95,6 +95,16 @@ def _large_expenses(ctx: WarningContext) -> list[BudgetWarning]:
 
 
 def _reserve_minimum(ctx: WarningContext) -> list[BudgetWarning]:
+    if ctx.reserve_balance < 0:
+        return [
+            BudgetWarning(
+                "reserve_negative",
+                Severity.CRITICAL,
+                "Reserve im Minus",
+                f"Nachträgliche Korrekturen haben mehr verbraucht, als in der Reserve lag: "
+                f"{format_eur(ctx.reserve_balance)}.",
+            )
+        ]
     if ctx.reserve_minimum <= 0 or ctx.reserve_balance >= ctx.reserve_minimum:
         return []
     return [

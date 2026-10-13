@@ -1,4 +1,4 @@
-import { History } from 'lucide-react'
+import { History, TriangleAlert } from 'lucide-react'
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
 
 import { Money } from '@/components/common'
@@ -83,7 +83,22 @@ export function CorrectionProvider({ children }: { children: ReactNode }) {
                   <dd className="text-right font-medium">
                     <Money cents={i.reserve_delta_cents} signed />
                   </dd>
+                  <dt className="text-muted-foreground">Reserve danach</dt>
+                  <dd className={i.reserve_balance_after_cents < 0 ? 'text-right font-medium text-critical' : 'text-right'}>
+                    <Money cents={i.reserve_balance_after_cents} />
+                  </dd>
                 </dl>
+                {i.reserve_delta_cents === 0 && i.buckets_changed && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Das Ergebnis bleibt gleich. Es ändert sich nur die Verteilung zwischen Fixkosten und Freizeit.
+                  </p>
+                )}
+                {i.reserve_balance_after_cents < 0 && (
+                  <p className="mt-2 flex gap-1.5 text-xs text-critical">
+                    <TriangleAlert className="size-3.5 shrink-0" /> Die Reserve rutscht ins Minus. Das Geld wurde bereits
+                    ausgegeben, die Korrektur macht das sichtbar.
+                  </p>
+                )}
               </div>
             ))}
             <div className="space-y-1.5">

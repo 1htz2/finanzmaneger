@@ -219,6 +219,7 @@ FinanzManager/
 - **Keine Offline-Datenhaltung.** Der Service Worker speichert nur die App-Oberfläche. Finanzdaten kommen immer live vom Server und werden nie im Browser-Cache abgelegt. Ohne Verbindung zum Server zeigt die App einen Fehler statt veralteter Zahlen. Eine Offline-Synchronisation gibt es nicht.
 - **Ein Benutzer.** Die App ist für genau ein Konto gebaut.
 - **Ein Budgetmodell.** Nur 20/50/30 ist hinterlegt. Weitere Modelle lassen sich im Code ergänzen (`backend/app/domain/budget_models.py`), eine Auswahl in der Oberfläche fehlt noch.
+- **Sparziele und Stornos.** Wird eine Umbuchung aus dem Sparen storniert, kommt das Geld als freies Erspartes zurück, nicht automatisch ins ursprüngliche Sparziel. Wer ein Sparziel löscht, gibt dessen Zuweisungen frei.
 - **Gehälter sind nicht stornierbar.** Ein Tippfehler im aktuellen Gehalt lässt sich über **Budget → Gehalt korrigieren** beheben. Einen Periodenwechsel rückgängig zu machen ist nicht vorgesehen. Dafür ist das Backup da.
 - **Keine Push-Benachrichtigungen.** Warnungen erscheinen in der App.
 - **Phase 2 und 3 sind vorbereitet, nicht gebaut.** PDF-Gehaltsabrechnung, Bankimport und KI-Assistent existieren nur als Schnittstellen in `backend/app/integrations/`. Es werden keine Bankzugangsdaten abgefragt oder gespeichert.

@@ -140,7 +140,7 @@ test('acceptance flow: two salary periods, expenses, fixed costs, goals, reserve
 
   // 14: compare historical periods
   await page.getByRole('link', { name: 'Budget' }).click()
-  const rows = page.locator('tbody tr')
+  const rows = page.getByRole('button').filter({ hasText: 'Sparquote' })
   await expect(rows).toHaveCount(2)
   await expect(rows.nth(1)).toContainText('+260,00 €')
   await rows.nth(1).click()

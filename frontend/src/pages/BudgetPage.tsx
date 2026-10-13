@@ -87,7 +87,28 @@ export function BudgetPage() {
 
 function PeriodTable({ periods, onOpen }: { periods: PeriodSummary[]; onOpen: (id: number) => void }) {
   return (
-    <div className="overflow-x-auto">
+    <>
+    <ul className="divide-y sm:hidden">
+      {periods.map((p) => (
+        <li key={p.id}>
+          <button type="button" onClick={() => onOpen(p.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm">
+            <span className="flex-1">
+              <span className="flex items-center gap-2 font-medium">
+                {periodRange(p.started_at, p.ended_at)}
+                {p.status === 'active' && <Badge variant="secondary">aktiv</Badge>}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Gehalt <Money cents={p.net_salary_cents + p.extra_income_cents} /> · ausgegeben <Money cents={p.spent_cents} /> · Sparquote{' '}
+                {p.actual_savings_rate_bp === null ? 'läuft' : formatPercent(p.actual_savings_rate_bp, 1)}
+              </span>
+            </span>
+            <Money cents={p.leftover_cents} signed className={cn('font-semibold', p.leftover_cents < 0 && 'text-critical')} />
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </button>
+        </li>
+      ))}
+    </ul>
+    <div className="hidden overflow-x-auto sm:block">
       <table className="w-full min-w-[640px] text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
@@ -134,6 +155,7 @@ function PeriodTable({ periods, onOpen }: { periods: PeriodSummary[]; onOpen: (i
         </tbody>
       </table>
     </div>
+    </>
   )
 }
 

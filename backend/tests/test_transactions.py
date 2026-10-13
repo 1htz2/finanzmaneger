@@ -302,3 +302,42 @@ def test_recurring_suggestion_and_marking(api: Api, frozen: Clock) -> None:
     assert [t["description"] for t in marked["items"]] == ["Netflix", "Netflix"]
     remaining = api.ok(api.get("/api/transactions/recurring-suggestions"))
     assert "Netflix" not in [s["label"] for s in remaining]
+
+
+def test_bucket_only_change_in_closed_period_needs_confirmation(api: Api, frozen: Clock) -> None:
+    _two_periods(api, frozen)
+    dinner = api.ok(api.get("/api/transactions", params={"q": "Restaurants"}))["items"][0]
+    body = {"category_id": api.category_id("Miete")}
+    r = api.patch(f"/api/transactions/{dinner['id']}", body)
+    assert r.status_code == 409
+    detail = r.json()["error"]["details"][0]
+    assert (detail["reserve_delta_cents"], detail["buckets_changed"]) == (0, True)
+    api.ok(api.patch(f"/api/transactions/{dinner['id']}", {**body, "confirm_correction": True}))
+    closed = api.ok(api.get("/api/periods"))[1]
+    assert [
+        (c["action"], c["reserve_delta_cents"])
+        for c in api.ok(api.get(f"/api/periods/{closed['id']}"))["corrections"]
+    ] == [("update", 0)]
+    assert bucket(closed, "fixed")["spent_cents"] == 90_000
+    assert api.reserve_balance() == 14_000
+
+
+def test_confirmed_correction_can_overdraw_reserve_and_is_flagged(api: Api, frozen: Clock) -> None:
+    _two_periods(api, frozen)
+    api.ok(
+        api.post(
+            "/api/reserve/withdraw", {"amount_cents": 14_000, "purpose": "Notfälle", "reason": "Zahnarzt"}
+        ),
+        201,
+    )
+    body = {
+        "amount_cents": 5_000,
+        "category_id": api.category_id("Kleidung"),
+        "occurred_at": "2026-10-25T12:00:00+02:00",
+        "description": "Nachtrag",
+    }
+    preview = api.post("/api/transactions", body).json()["error"]["details"][0]
+    assert preview["reserve_balance_after_cents"] == -5_000
+    api.ok(api.post("/api/transactions", {**body, "confirm_correction": True}), 201)
+    assert api.reserve_balance() == -5_000
+    assert next(w["code"] for w in api.dashboard()["warnings"]) == "reserve_negative"
