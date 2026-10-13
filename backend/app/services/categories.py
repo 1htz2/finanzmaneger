@@ -51,13 +51,15 @@ def ensure_default_categories(db: Session) -> None:
 
 
 def _usage(db: Session) -> dict[int, int]:
-    txn = dict(
-        db.execute(
+    txn: dict[int, int] = {
+        cid: n
+        for cid, n in db.execute(
             select(Transaction.category_id, func.count())
             .where(Transaction.category_id.is_not(None))
             .group_by(Transaction.category_id)
         ).all()
-    )
+        if cid is not None
+    }
     rec = dict(
         db.execute(
             select(RecurringExpense.category_id, func.count()).group_by(RecurringExpense.category_id)

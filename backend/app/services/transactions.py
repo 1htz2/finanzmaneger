@@ -8,7 +8,7 @@ import statistics
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import Select, asc, desc, func, or_, select
+from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core import clock
@@ -107,7 +107,7 @@ def list_transactions(
     limit: int = 50,
     offset: int = 0,
 ) -> TransactionListOut:
-    stmt: Select[tuple[Transaction]] = select(Transaction)
+    stmt = select(Transaction)
     if q:
         pattern = f"%{q.strip()}%"
         stmt = stmt.outerjoin(Category, Transaction.category_id == Category.id).where(
@@ -285,6 +285,7 @@ def delete_transaction(db: Session, txn_id: int, *, confirm: bool, reason: str |
 
 
 def create_income(db: Session, data: IncomeIn) -> TransactionOut:
+    category: Category | None
     if data.category_id is not None:
         category = _category(db, data.category_id, {CategoryKind.INCOME})
     else:

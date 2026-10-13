@@ -23,8 +23,3 @@ def local_date(value: datetime) -> date:
 
 def today() -> date:
     return local_date(now())
-
-
-def now_default() -> datetime:
-    """Column default that resolves ``now`` at call time, so tests can move the clock."""
-    return now()

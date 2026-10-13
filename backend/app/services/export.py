@@ -6,7 +6,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import Engine, inspect, select
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from app.core import clock
@@ -51,7 +51,7 @@ def export_json(db: Session) -> dict[str, Any]:
         "amounts": "integer cents",
     }
     for model in EXPORTED:
-        columns = [c.key for c in inspect(model).mapper.column_attrs]
+        columns = [c.key for c in model.__mapper__.column_attrs]
         data[model.__tablename__] = [
             {c: getattr(row, c) for c in columns} for row in db.scalars(select(model)).unique()
         ]

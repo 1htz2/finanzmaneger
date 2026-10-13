@@ -3,8 +3,7 @@ from datetime import date, datetime
 from sqlalchemy import CheckConstraint, Date, ForeignKey, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core import clock
-from app.db.base import Base, UTCDateTime, str_enum
+from app.db.base import Base, CreatedAt, UTCDateTime, str_enum
 from app.domain.budget_models import Bucket
 from app.domain.enums import AllocationSource, CorrectionAction, PeriodStatus
 
@@ -39,7 +38,7 @@ class BudgetPeriod(Base):
     expected_next_payday: Mapped[date | None] = mapped_column(Date)
     closing_leftover_cents: Mapped[int | None]
     closed_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
+    created_at: Mapped[CreatedAt]
 
     allocations: Mapped[list["BudgetAllocation"]] = relationship(
         back_populates="period", order_by="BudgetAllocation.id"
@@ -59,7 +58,7 @@ class BudgetAllocation(Base):
     source: Mapped[AllocationSource] = mapped_column(str_enum(AllocationSource, "alloc_source"))
     transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), index=True)
     note: Mapped[str | None] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
+    created_at: Mapped[CreatedAt]
 
     period: Mapped[BudgetPeriod] = relationship(back_populates="allocations")
 
@@ -77,4 +76,4 @@ class PeriodCorrection(Base):
     leftover_after_cents: Mapped[int]
     reserve_delta_cents: Mapped[int]
     reason: Mapped[str] = mapped_column(String(500))
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
+    created_at: Mapped[CreatedAt]

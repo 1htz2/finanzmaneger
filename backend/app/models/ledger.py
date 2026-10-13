@@ -5,8 +5,7 @@ from datetime import date, datetime
 from sqlalchemy import CheckConstraint, Date, ForeignKey, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core import clock
-from app.db.base import Base, UTCDateTime, str_enum
+from app.db.base import Base, CreatedAt, UpdatedAt, UTCDateTime, str_enum
 from app.domain.enums import ReserveKind, SavingsKind
 
 
@@ -33,7 +32,7 @@ class ReserveEntry(Base):
     transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), index=True)
     purpose: Mapped[str | None] = mapped_column(String(64))
     note: Mapped[str | None] = mapped_column(String(500))
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
+    created_at: Mapped[CreatedAt]
 
 
 class SavingsEntry(Base):
@@ -55,7 +54,7 @@ class SavingsEntry(Base):
     period_id: Mapped[int | None] = mapped_column(ForeignKey("budget_periods.id"), index=True)
     transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), index=True)
     note: Mapped[str | None] = mapped_column(String(500))
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
+    created_at: Mapped[CreatedAt]
 
 
 class SavingsGoal(Base):
@@ -67,8 +66,8 @@ class SavingsGoal(Base):
     target_cents: Mapped[int]
     target_date: Mapped[date | None] = mapped_column(Date)
     archived: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
-    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default, onupdate=clock.now_default)
+    created_at: Mapped[CreatedAt]
+    updated_at: Mapped[UpdatedAt]
 
 
 class SavingsAllocation(Base):
@@ -81,4 +80,4 @@ class SavingsAllocation(Base):
     goal_id: Mapped[int] = mapped_column(ForeignKey("savings_goals.id"), index=True)
     amount_cents: Mapped[int]
     note: Mapped[str | None] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
+    created_at: Mapped[CreatedAt]

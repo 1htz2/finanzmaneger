@@ -1,10 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import JSON, CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core import clock
-from app.db.base import Base, UTCDateTime
+from app.db.base import Base, UpdatedAt
 from app.domain.budget_models import DEFAULT_BUDGET_MODEL
 
 DEFAULT_RESERVE_PURPOSES = [
@@ -30,4 +27,4 @@ class AppSettings(Base):
     reserve_minimum_cents: Mapped[int] = mapped_column(default=0)
     large_expense_threshold_cents: Mapped[int] = mapped_column(default=15_000)
     reserve_purposes: Mapped[list[str]] = mapped_column(JSON, default=lambda: list(DEFAULT_RESERVE_PURPOSES))
-    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default, onupdate=clock.now_default)
+    updated_at: Mapped[UpdatedAt]

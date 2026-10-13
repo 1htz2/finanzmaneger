@@ -1,10 +1,9 @@
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import CheckConstraint, Date, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core import clock
-from app.db.base import Base, UTCDateTime, str_enum
+from app.db.base import Base, CreatedAt, UpdatedAt, str_enum
 from app.domain.recurring import Interval
 from app.models.category import Category
 
@@ -23,7 +22,7 @@ class RecurringExpense(Base):
     due_date: Mapped[date | None] = mapped_column(Date)
     active: Mapped[bool] = mapped_column(default=True)
     description: Mapped[str | None] = mapped_column(String(500))
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
-    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default, onupdate=clock.now_default)
+    created_at: Mapped[CreatedAt]
+    updated_at: Mapped[UpdatedAt]
 
     category: Mapped[Category] = relationship(lazy="joined")

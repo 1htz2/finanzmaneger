@@ -11,6 +11,7 @@ from app.schemas.periods import PeriodSummaryOut
 from app.schemas.pots import BalancePoint, GoalOut
 from app.schemas.transactions import CategoryRef, TransactionOut
 
+PaceUnavailable = Literal["no_active_period", "no_expected_payday", "payday_passed"]
 Color = Annotated[str, StringConstraints(pattern=r"^#[0-9a-fA-F]{6}$")]
 
 
@@ -94,7 +95,7 @@ class DashboardOut(Schema):
     reserve_balance_cents: int
     savings: SavingsSummaryOut
     leisure_pace: PaceOut | None
-    pace_unavailable_reason: Literal["no_active_period", "no_expected_payday", "payday_passed"] | None
+    pace_unavailable_reason: PaceUnavailable | None
     warnings: list[WarningOut]
     recent_transactions: list[TransactionOut]
     upcoming_fixed_costs: list[UpcomingCostOut]

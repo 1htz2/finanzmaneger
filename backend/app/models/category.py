@@ -1,10 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core import clock
-from app.db.base import Base, UTCDateTime, str_enum
+from app.db.base import Base, CreatedAt, str_enum
 from app.domain.enums import CategoryKind
 
 
@@ -18,4 +15,4 @@ class Category(Base):
     color: Mapped[str | None] = mapped_column(String(16))
     is_default: Mapped[bool] = mapped_column(default=False)
     archived: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
+    created_at: Mapped[CreatedAt]

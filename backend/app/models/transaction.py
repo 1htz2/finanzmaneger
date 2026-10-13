@@ -3,8 +3,7 @@ from datetime import datetime
 from sqlalchemy import CheckConstraint, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core import clock
-from app.db.base import Base, UTCDateTime, str_enum
+from app.db.base import Base, CreatedAt, UpdatedAt, UTCDateTime, str_enum
 from app.domain.budget_models import Bucket
 from app.domain.enums import IncomeKind, Pot, TransactionType
 from app.models.category import Category
@@ -61,7 +60,7 @@ class Transaction(Base):
     # Prepared for phase 2 imports (bank CSV, payslips); "manual" for everything in v1.
     source: Mapped[str] = mapped_column(String(32), default="manual")
     external_ref: Mapped[str | None] = mapped_column(String(128), unique=True)
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
-    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default, onupdate=clock.now_default)
+    created_at: Mapped[CreatedAt]
+    updated_at: Mapped[UpdatedAt]
 
     category: Mapped[Category | None] = relationship(lazy="joined")

@@ -1,10 +1,7 @@
-from datetime import datetime
-
 from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core import clock
-from app.db.base import Base, UTCDateTime
+from app.db.base import Base, CreatedAt
 
 
 class IdempotencyKey(Base):
@@ -17,4 +14,4 @@ class IdempotencyKey(Base):
     request_hash: Mapped[str] = mapped_column(String(64))
     status_code: Mapped[int]
     response: Mapped[object] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=clock.now_default)
+    created_at: Mapped[CreatedAt]

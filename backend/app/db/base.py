@@ -1,9 +1,10 @@
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Annotated
 
 from sqlalchemy import DateTime, Enum, MetaData, TypeDecorator
 from sqlalchemy.engine import Dialect
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, mapped_column
 
 NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
@@ -48,3 +49,13 @@ def str_enum(enum_cls: type[StrEnum], name: str) -> Enum:
         values_callable=lambda e: [m.value for m in e],
         validate_strings=True,
     )
+
+
+def _now() -> datetime:
+    from app.core import clock
+
+    return clock.now()
+
+
+CreatedAt = Annotated[datetime, mapped_column(UTCDateTime, default=_now)]
+UpdatedAt = Annotated[datetime, mapped_column(UTCDateTime, default=_now, onupdate=_now)]

@@ -18,6 +18,7 @@ from app.schemas.misc import (
     CategoryBreakdownOut,
     DashboardOut,
     PaceOut,
+    PaceUnavailable,
     SavingsSummaryOut,
     StatsAveragesOut,
     StatsOverviewOut,
@@ -46,7 +47,7 @@ def dashboard(db: Session) -> DashboardOut:
 
     summary = summarize(db, period) if period else None
     pace_out: PaceOut | None = None
-    pace_reason: str | None = "no_active_period"
+    pace_reason: PaceUnavailable | None = "no_active_period"
     warnings: list[WarningOut] = []
     if period is not None and summary is not None:
         leisure = _status(summary, Bucket.LEISURE)
@@ -100,7 +101,7 @@ def dashboard(db: Session) -> DashboardOut:
             balance_cents=balance, allocated_cents=allocated, unallocated_cents=balance - allocated
         ),
         leisure_pace=pace_out,
-        pace_unavailable_reason=pace_reason,  # type: ignore[arg-type]
+        pace_unavailable_reason=pace_reason,
         warnings=warnings,
         recent_transactions=list_transactions(db, limit=6).items,
         upcoming_fixed_costs=recurring.upcoming_costs(ov),
