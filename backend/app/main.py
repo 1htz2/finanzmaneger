@@ -62,7 +62,7 @@ def _install_spa(app: FastAPI, dist: Path) -> None:
     """Serves the built PWA from the same origin as the API (no CORS needed)."""
     index = dist / "index.html"
 
-    @app.get("/{path:path}", include_in_schema=False)
+    @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def spa(path: str) -> Response:
         if path.startswith("api/") or path == "api":
             return _error(404, "http_error", "Nicht gefunden")

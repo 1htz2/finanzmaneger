@@ -20,6 +20,9 @@ import type { BalancePoint, Bucket } from '@/lib/types'
 
 const AXIS = { fontSize: 12, fill: 'var(--muted-foreground)' }
 
+// Legend text stays in text color; the colored dot carries series identity.
+const legendText = (value: string) => <span style={{ color: 'var(--muted-foreground)' }}>{value}</span>
+
 /** Ring showing how much of a bucket is used. Overspending turns the ring critical. */
 export function BudgetRing({
   bucket,
@@ -165,7 +168,7 @@ export function PeriodBars({ data, height = 260 }: { data: PeriodBarDatum[]; hei
         <Tooltip content={(props: TooltipContentProps<ValueType, NameType>) => (
             <ChartTooltip active={props.active} payload={props.payload} label={props.label} />
           )} cursor={{ fill: 'var(--muted)', opacity: 0.5 }} />
-        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} formatter={legendText} />
         {series.map((b) => (
           <Bar
             key={b}
@@ -209,7 +212,7 @@ export function GroupedBars({
         <Tooltip content={(props: TooltipContentProps<ValueType, NameType>) => (
             <ChartTooltip active={props.active} payload={props.payload} label={props.label} />
           )} cursor={{ fill: 'var(--muted)', opacity: 0.5 }} />
-        {series.length > 1 && <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />}
+        {series.length > 1 && <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} formatter={legendText} />}
         {series.map((s) => (
           <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         ))}

@@ -95,6 +95,16 @@ def cmd_seed_demo(_: argparse.Namespace) -> None:
             sys.exit("Die Datenbank enthält bereits Budgetzeiträume. Demo-Daten nur in eine leere DB.")
         cats = {c.name: c.id for c in categories.list_categories(db)}
         now = clock.now()
+        rent = recurring.create_recurring(
+            db,
+            RecurringIn(
+                name="Miete (Demo)",
+                amount_cents=55_000,
+                category_id=cats["Miete"],
+                interval=Interval.MONTHLY,
+                due_date=(now - timedelta(days=75)).date(),
+            ),
+        )
         starts = [now - timedelta(days=d) for d in (75, 45, 14)]
         spending = [
             [
@@ -128,19 +138,10 @@ def cmd_seed_demo(_: argparse.Namespace) -> None:
                         amount_cents=amount,
                         category_id=cats[name],
                         description=f"{name} (Demo)",
+                        recurring_expense_id=rent.id if name == "Miete" else None,
                     ),
                 )
         periods.set_expected_payday(db, clock.today() + timedelta(days=16))
-        recurring.create_recurring(
-            db,
-            RecurringIn(
-                name="Miete (Demo)",
-                amount_cents=55_000,
-                category_id=cats["Miete"],
-                interval=Interval.MONTHLY,
-                due_date=clock.today().replace(day=1),
-            ),
-        )
         recurring.create_recurring(
             db,
             RecurringIn(

@@ -75,7 +75,7 @@ export function StatsPage() {
             <CardDescription>Nettogehalt plus weitere Einnahmen der Periode</CardDescription>
           </CardHeader>
           <CardContent>
-            <GroupedBars data={incomeData} xKey="label" series={[{ key: 'income', name: 'Einnahmen', color: 'var(--foreground)' }]} height={220} />
+            <GroupedBars data={incomeData} xKey="label" series={[{ key: 'income', name: 'Einnahmen', color: 'var(--muted-foreground)' }]} height={220} />
           </CardContent>
         </Card>
 

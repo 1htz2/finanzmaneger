@@ -1,0 +1,12 @@
+{
+  "name": "finanzmanager-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "pretest": "node -e \"require('fs').rmSync('artifacts',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0"
+  }
+}

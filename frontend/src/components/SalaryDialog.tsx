@@ -21,6 +21,11 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const [step, setStep] = useState<Step>('input')
   const [amount, setAmount] = useState('')
   const [when, setWhen] = useState(nowLocalInput())
+  const [whenEdited, setWhenEdited] = useState(false)
+  // Frozen at preview time and reused for booking, so preview and result agree.
+  // Untouched means "just now": the exact instant, not the minute rounded down,
+  // otherwise a payment booked seconds ago would count as after the salary.
+  const [receivedAt, setReceivedAt] = useState('')
   const [description, setDescription] = useState('')
   const [payday, setPayday] = useState('')
   const [cover, setCover] = useState(false)
@@ -40,12 +45,9 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     }
     setBusy(true)
     try {
-      setPreview(
-        await api.post<SalaryPreview>('/salary/preview', {
-          amount_cents: cents,
-          received_at: localInputToApi(when),
-        }),
-      )
+      const at = whenEdited ? localInputToApi(when) : new Date().toISOString()
+      setReceivedAt(at)
+      setPreview(await api.post<SalaryPreview>('/salary/preview', { amount_cents: cents, received_at: at }))
       setStep('preview')
     } catch (err) {
       toast.error(errorMessage(err))
@@ -59,7 +61,7 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       '/salary',
       {
         amount_cents: cents,
-        received_at: localInputToApi(when),
+        received_at: receivedAt,
         description: description || null,
         cover_deficit_from_reserve: cover,
         expected_next_payday: payday || null,
@@ -128,7 +130,12 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="salary-when">Geldeingang</Label>
-            <Input id="salary-when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} required />
+            <Input id="salary-when" type="datetime-local" value={when} onChange={(e) => {
+                setWhen(e.target.value)
+                setWhenEdited(true)
+              }}
+              required
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="salary-desc">Beschreibung (optional)</Label>
@@ -155,7 +162,7 @@ export function SalaryDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           {closing ? (
             <section className="rounded-xl border p-4">
               <h3 className="text-sm font-semibold">
-                Abschluss der aktuellen Periode <span className="font-normal text-muted-foreground">({periodRange(closing.period.started_at, new Date(localInputToApi(when)).toISOString())})</span>
+                Abschluss der aktuellen Periode <span className="font-normal text-muted-foreground">({periodRange(closing.period.started_at, new Date(receivedAt).toISOString())})</span>
               </h3>
               <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-sm">
                 {(['fixed', 'leisure'] as const).map((b) => {

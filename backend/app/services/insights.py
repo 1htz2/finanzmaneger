@@ -77,7 +77,8 @@ def dashboard(db: Session) -> DashboardOut:
             .where(
                 Transaction.period_id == period.id,
                 Transaction.type == TransactionType.EXPENSE,
-                Transaction.recurring_expense_id.is_(None),
+                # Rent and other fixed costs are expected; "unusual" means leisure spending.
+                Transaction.bucket == Bucket.LEISURE,
                 Transaction.amount_cents >= settings.large_expense_threshold_cents,
             )
             .order_by(Transaction.amount_cents.desc())

@@ -37,7 +37,13 @@ export function formatPercent(bp: number | null | undefined, digits = 2): string
 export function parseEuroInput(raw: string): number | null {
   const s = raw.trim().replace(/\s|€/g, '')
   if (!s) return null
-  const normalized = s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s
+  // German input: "." groups thousands, "," is the decimal mark. Without a comma,
+  // "2.000" is two thousand while "12.50" is read as a decimal (common on phones).
+  const normalized = s.includes(',')
+    ? s.replace(/\./g, '').replace(',', '.')
+    : /^\d{1,3}(\.\d{3})+$/.test(s)
+      ? s.replace(/\./g, '')
+      : s
   const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(normalized)
   if (!match) return null
   const euros = Number(match[1])

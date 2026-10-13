@@ -28,7 +28,7 @@ import {
   nowLocalInput,
   parseEuroInput,
 } from '@/lib/format'
-import { useCategories, useFinanceMutation, useGoals } from '@/lib/queries'
+import { useCategories, useFinanceMutation, useGoals, useRecurring } from '@/lib/queries'
 import type { Pot, SpendingBucket, Transaction } from '@/lib/types'
 
 export type TxTab = 'expense' | 'income' | 'transfer'
@@ -66,17 +66,23 @@ export function TransactionDialog({
   const [description, setDescription] = useState(edit?.description ?? '')
   const [merchant, setMerchant] = useState(edit?.merchant ?? '')
   const [when, setWhen] = useState(edit ? isoToLocalInput(edit.occurred_at) : nowLocalInput())
-  const [recurring, setRecurring] = useState(edit?.is_recurring ?? false)
+  const [isRecurring, setIsRecurring] = useState(edit?.is_recurring ?? false)
   const [target, setTarget] = useState<Pot>('period')
   const [bucket, setBucket] = useState<SpendingBucket>('leisure')
   const [fromPot, setFromPot] = useState<Pot>('reserve')
   const [toPot, setToPot] = useState<Pot>('savings')
   const [goalId, setGoalId] = useState<string>('none')
+  const [recurringId, setRecurringId] = useState<string>(edit?.recurring_expense_id ? String(edit.recurring_expense_id) : 'none')
   const [invalid, setInvalid] = useState(false)
   const [idempotencyKey] = useState(newIdempotencyKey)
 
   const categories = useCategories()
   const goals = useGoals()
+  const recurring = useRecurring()
+  // Linking a booked payment to its planned fixed cost keeps it from being counted twice.
+  const plansForCategory = (recurring.data ?? []).filter(
+    (r) => r.active && categoryId !== '' && String(r.category.id) === categoryId,
+  )
   const runCorrection = useCorrection()
 
 
@@ -84,6 +90,9 @@ export function TransactionDialog({
   const leisureCats = active.filter((c) => c.kind === 'leisure')
   const fixedCats = active.filter((c) => c.kind === 'fixed')
   const incomeCats = active.filter((c) => c.kind === 'income' && c.name !== 'Gehalt')
+
+  const linkedPlan =
+    recurringId !== 'none' && plansForCategory.some((r) => String(r.id) === recurringId) ? Number(recurringId) : null
 
   const mutation = useFinanceMutation(async () => {
     const cents = parseEuroInput(amount)
@@ -101,7 +110,7 @@ export function TransactionDialog({
               description,
               merchant: merchant || null,
               occurred_at,
-              is_recurring: recurring,
+              is_recurring: isRecurring,
             }
           : { description, ...(categoryId ? { category_id: Number(categoryId) } : {}) }
       return runCorrection((flags) => api.patch<Transaction>(`/transactions/${edit.id}`, { ...body, ...flags }))
@@ -117,7 +126,8 @@ export function TransactionDialog({
             description: description || categories.data?.find((c) => String(c.id) === categoryId)?.name,
             merchant: merchant || null,
             occurred_at,
-            is_recurring: recurring,
+            is_recurring: isRecurring,
+            recurring_expense_id: linkedPlan,
             ...flags,
           },
           idempotencyKey,
@@ -364,13 +374,34 @@ export function TransactionDialog({
               </>
             )}
 
+            {tab === 'expense' && !edit && plansForCategory.length > 0 && (
+              <Field label="Geplante Fixkosten" htmlFor="tx-plan">
+                <Select value={recurringId} onValueChange={setRecurringId}>
+                  <SelectTrigger id="tx-plan" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Zuordnung</SelectItem>
+                    {plansForCategory.map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)}>
+                        Zahlung für „{r.name}“
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Zugeordnet gilt der geplante Betrag als bezahlt und wird nicht doppelt gezählt.
+                </p>
+              </Field>
+            )}
+
             {tab === 'expense' && (
               <label className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <span className="text-sm">
                   Wiederkehrende Zahlung
                   <span className="block text-xs text-muted-foreground">Markiert die Buchung als regelmäßig.</span>
                 </span>
-                <Switch checked={recurring} onCheckedChange={setRecurring} />
+                <Switch checked={isRecurring || linkedPlan !== null} onCheckedChange={setIsRecurring} disabled={linkedPlan !== null} />
               </label>
             )}
           </>

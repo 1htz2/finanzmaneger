@@ -189,3 +189,11 @@ def test_dashboard_example_from_brief(api: Api, frozen: Clock) -> None:
         21_360,
         4523,
     )
+
+
+def test_large_expense_warning_ignores_fixed_costs(api: Api, frozen: Clock) -> None:
+    _start(api, frozen)
+    api.expense(60_000, "Miete", "2026-10-15T10:00:00+02:00", description="Miete")
+    api.expense(20_000, "Reisen", "2026-10-15T11:00:00+02:00", description="Flug")
+    large = [w["message"] for w in api.dashboard()["warnings"] if w["code"] == "large_expense"]
+    assert large == ["Flug: 200,00 €"]
