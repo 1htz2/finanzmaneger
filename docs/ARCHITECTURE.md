@@ -69,9 +69,11 @@ Trägst du nachträglich eine Ausgabe in eine abgeschlossene Periode ein, änder
 
 `settle_closed_periods` behandelt das in drei Schritten:
 
-1. Das Backend führt die Änderung aus und berechnet das neue Ergebnis jeder betroffenen abgeschlossenen Periode.
+1. Vor der Änderung hält das Backend den Stand jedes Topfs der betroffenen abgeschlossenen Perioden fest (`snapshot_closed`). Dann führt es die Änderung aus und vergleicht. Jede Abweichung zählt, auch eine, die nur Geld zwischen Fixkosten und Freizeit verschiebt und das Ergebnis gleich lässt.
 2. Ohne Bestätigung antwortet es mit HTTP 409 (`closed_period_correction_required`) und schickt die Auswirkung mit: Ergebnis vorher, Ergebnis nachher, Änderung der Reserve. Die Transaktion wird verworfen.
 3. Die Oberfläche zeigt diese Zahlen. Bestätigst du, wiederholt sie die Anfrage mit `confirm_correction`. Das Backend bucht dann die Differenz als Korrekturzeile in der Reserve, schreibt einen Prüfeintrag in `period_corrections` und aktualisiert das festgeschriebene Ergebnis.
+
+Eine bestätigte Korrektur darf die Reserve ins Minus bringen, denn das Geld ist bereits ausgegeben. Der Dialog zeigt den Reservestand danach, und das Dashboard warnt, solange die Reserve negativ ist.
 
 Die Reserve-Differenz folgt der Abschlussregel. Wird aus 140 € Rest durch eine Nachbuchung ein Defizit von 10 €, verliert die Reserve 140 €, nicht 150 €.
 
