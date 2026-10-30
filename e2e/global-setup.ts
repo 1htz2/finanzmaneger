@@ -1,8 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-// Every run starts from an empty database. The web server creates it on startup,
-// so the folder is cleared before Playwright launches the server.
+// The database folder is cleared in playwright.config.ts, before the web server starts.
 export default function globalSetup() {
   fs.mkdirSync(path.resolve(import.meta.dirname, 'artifacts/shots'), { recursive: true })
 }

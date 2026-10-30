@@ -10,6 +10,7 @@ from app.schemas.pots import (
     ReserveDepositIn,
     ReserveEntryOut,
     ReserveOut,
+    ReserveSetupIn,
     ReserveWithdrawIn,
     SavingsEntryOut,
     SavingsOut,
@@ -31,6 +32,13 @@ def deposit(data: ReserveDepositIn, db: DB, key: IdempotencyKeyHeader = None) ->
     body, _ = run_idempotent(db, key, "reserve-deposit", data, lambda: pots.reserve_deposit(db, data))
     db.commit()
     return JSONResponse(body, status_code=201)
+
+
+@router.post("/reserve/setup", response_model=ReserveOut)
+def setup(data: ReserveSetupIn, db: DB, key: IdempotencyKeyHeader = None) -> JSONResponse:
+    body, _ = run_idempotent(db, key, "reserve-setup", data, lambda: pots.reserve_setup(db, data))
+    db.commit()
+    return JSONResponse(body)
 
 
 @router.post("/reserve/withdraw", response_model=ReserveEntryOut, status_code=201)

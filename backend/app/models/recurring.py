@@ -22,6 +22,8 @@ class RecurringExpense(Base):
     due_date: Mapped[date | None] = mapped_column(Date)
     active: Mapped[bool] = mapped_column(default=True)
     description: Mapped[str | None] = mapped_column(String(500))
+    # Planned instalment of a debt; payments booked from this plan repay that debt.
+    debt_id: Mapped[int | None] = mapped_column(ForeignKey("debts.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[CreatedAt]
     updated_at: Mapped[UpdatedAt]
 

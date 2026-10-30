@@ -93,6 +93,7 @@ class SavingsSummaryOut(Schema):
 class DashboardOut(Schema):
     active_period: PeriodSummaryOut | None
     reserve_balance_cents: int
+    debt_remaining_cents: int
     savings: SavingsSummaryOut
     leisure_pace: PaceOut | None
     pace_unavailable_reason: PaceUnavailable | None

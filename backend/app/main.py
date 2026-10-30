@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.routes import auth, misc, periods, pots, recurring, transactions
+from app.api.routes import accounts, auth, debts, misc, periods, pots, recurring, transactions
 from app.core.config import Settings, get_settings
 from app.core.errors import AppError
 from app.db.migrate import upgrade_to_head
@@ -124,7 +124,7 @@ def create_app(settings: Settings | None = None, *, run_migrations: bool = True)
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    for module in (auth, periods, transactions, pots, recurring, misc):
+    for module in (auth, periods, transactions, pots, accounts, recurring, debts, misc):
         api.include_router(module.router)
     app.include_router(api)
 

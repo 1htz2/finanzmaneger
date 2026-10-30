@@ -37,3 +37,44 @@ def test_db_rejects_second_active_period(tmp_path: Path) -> None:
         raised = "UNIQUE" in str(exc)
     engine.dispose()
     assert raised
+
+
+def test_debt_migration_keeps_existing_data_and_adds_rate_category(tmp_path: Path) -> None:
+    from alembic import command
+
+    from app.db.migrate import alembic_config
+
+    url = f"sqlite:///{(tmp_path / 'm.db').as_posix()}"
+    command.upgrade(alembic_config(url), "0001")
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO categories (name, kind, color, is_default, archived, created_at)"
+                " VALUES ('Miete', 'fixed', NULL, 1, 0, '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO budget_periods (started_at, status, budget_model_key, net_salary_cents,"
+                " created_at) VALUES ('2026-01-01 00:00:00', 'active', '20-50-30', 100000,"
+                " '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO transactions (type, occurred_at, amount_cents, bucket, category_id, description,"
+                " period_id, is_recurring, source, created_at, updated_at) VALUES ('expense',"
+                " '2026-01-02 00:00:00', 50000, 'fixed', 1, 'Miete', 1, 0, 'manual',"
+                " '2026-01-02 00:00:00', '2026-01-02 00:00:00')"
+            )
+        )
+    engine.dispose()
+
+    upgrade_to_head(url)
+    engine = create_engine(url)
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT amount_cents, debt_id FROM transactions")).all() == [(50000, None)]
+        names = conn.execute(text("SELECT name FROM categories WHERE kind = 'fixed' ORDER BY id")).scalars()
+        assert list(names) == ["Miete", "Kredite und Raten"]
+    engine.dispose()

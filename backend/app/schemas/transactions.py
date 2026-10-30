@@ -34,6 +34,7 @@ class TransactionOut(Schema):
     merchant: str | None
     period_id: int | None
     recurring_expense_id: int | None
+    debt_id: int | None
     is_recurring: bool
     income_kind: IncomeKind | None
     income_target: Pot | None
@@ -61,6 +62,7 @@ class ExpenseIn(CorrectionConfirmation):
     description: ShortText
     merchant: Name | None = None
     recurring_expense_id: int | None = None
+    debt_id: int | None = None
     is_recurring: bool = False
 
 
@@ -74,6 +76,7 @@ class TransactionUpdate(CorrectionConfirmation):
     description: ShortText | None = None
     merchant: Name | None = None
     is_recurring: bool | None = None
+    debt_id: int | None = Field(default=None, description="null entfernt die Zuordnung zu einer Schuld")
 
 
 class IncomeIn(CorrectionConfirmation):
@@ -83,6 +86,7 @@ class IncomeIn(CorrectionConfirmation):
     description: ShortText
     target: Pot
     bucket: Literal[Bucket.LEISURE, Bucket.FIXED] = Bucket.LEISURE
+    account_id: int | None = Field(default=None, description="Anlageort, wenn die Einnahme ins Sparen geht")
 
 
 class TransferIn(Schema):
@@ -94,6 +98,9 @@ class TransferIn(Schema):
         default=None, description="Bei Entnahme aus dem Sparen zuerst von diesem Sparziel lösen"
     )
     note: OptionalText = None
+    account_id: int | None = Field(
+        default=None, description="Anlageort, von dem oder auf den das Ersparte gebucht wird"
+    )
 
     @model_validator(mode="after")
     def _check(self) -> "TransferIn":
@@ -101,6 +108,8 @@ class TransferIn(Schema):
             raise ValueError("Quelle und Ziel müssen verschieden sein")
         if Pot.PERIOD in (self.from_pot, self.to_pot) and self.bucket is None:
             raise ValueError("Für Umbuchungen mit dem Budget muss ein Topf gewählt werden")
+        if self.account_id is not None and Pot.SAVINGS not in (self.from_pot, self.to_pot):
+            raise ValueError("Ein Anlageort gehört nur zu Umbuchungen mit dem Sparen")
         return self
 
 

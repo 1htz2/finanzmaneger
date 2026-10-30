@@ -3,6 +3,8 @@ import {
   BarChart3,
   Banknote,
   Building2,
+  Gem,
+  HandCoins,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -47,7 +49,9 @@ export const NAV: NavItem[] = [
   { to: '/budget', label: 'Budget', icon: Wallet },
   { to: '/fixkosten', label: 'Fixkosten', icon: Building2 },
   { to: '/reserve', label: 'Reserve', icon: ShieldCheck },
+  { to: '/vermoegen', label: 'Vermögen', icon: Gem },
   { to: '/sparziele', label: 'Sparziele', icon: PiggyBank },
+  { to: '/schulden', label: 'Schulden', icon: HandCoins },
   { to: '/statistiken', label: 'Statistiken', icon: BarChart3 },
   { to: '/einstellungen', label: 'Einstellungen', icon: Settings },
 ]

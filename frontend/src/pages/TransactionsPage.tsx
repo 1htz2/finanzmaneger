@@ -1,5 +1,6 @@
 import { ArrowDownUp, Filter, Pencil, Plus, Repeat, Search, Trash2, Undo2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { useActions } from '@/components/Actions'
@@ -19,6 +20,7 @@ import { BUCKETS, POTS } from '@/lib/domain'
 import { formatDateTime, parseEuroInput } from '@/lib/format'
 import {
   useCategories,
+  useDebts,
   useFinanceMutation,
   useRecurringSuggestions,
   useTransactions,
@@ -43,6 +45,11 @@ export function TransactionsPage() {
   const [limit, setLimit] = useState(PAGE)
   const [showFilters, setShowFilters] = useState(false)
   const [selected, setSelected] = useState<Transaction | null>(null)
+  // Set by the debts page to list the repayments of one debt.
+  const [params, setParams] = useSearchParams()
+  const debtId = Number(params.get('debt_id')) || undefined
+  const debts = useDebts()
+  const debtName = debts.data?.items.find((d) => d.id === debtId)?.name
 
   const [sortField, order] = sort.split(':') as [string, 'asc' | 'desc']
   const filters: TransactionFilters = useMemo(
@@ -57,9 +64,10 @@ export function TransactionsPage() {
       max_amount: parseEuroInput(maxAmount) ?? undefined,
       sort: sortField,
       order,
+      debt_id: debtId,
       limit,
     }),
-    [q, type, bucket, categoryId, from, to, minAmount, maxAmount, sortField, order, limit],
+    [q, type, bucket, categoryId, from, to, minAmount, maxAmount, sortField, order, limit, debtId],
   )
   const { data, isLoading, error, refetch, isFetching } = useTransactions(filters)
   const categories = useCategories()
@@ -121,6 +129,17 @@ export function TransactionsPage() {
           </Button>
         </div>
       </div>
+
+      {debtId !== undefined && (
+        <div className="mb-4 flex items-center gap-2 text-sm">
+          <Badge variant="secondary" className="gap-1.5 py-1">
+            Rückzahlungen: {debtName ?? 'Schuld'}
+            <button type="button" aria-label="Filter entfernen" onClick={() => setParams({})} className="rounded-full hover:text-foreground">
+              <X className="size-3.5" />
+            </button>
+          </Badge>
+        </div>
+      )}
 
       {showFilters && (
         <Card className="mb-4">

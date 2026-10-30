@@ -195,3 +195,31 @@ def test_exports(api: Api, frozen: Clock) -> None:
     backup = api.post("/api/export/backup")
     assert backup.status_code == 200
     assert backup.content[:16] == b"SQLite format 3\x00"
+
+
+def test_emergency_reserve_setup_sets_target_and_books_starting_amount(api: Api, frozen: Clock) -> None:
+    assert api.ok(api.get("/api/reserve"))["monthly_spending_cents"] is None
+    _start(api, frozen)
+    reserve = api.ok(api.get("/api/reserve"))
+    assert (reserve["balance_cents"], reserve["minimum_cents"]) == (0, 0)
+    assert reserve["monthly_spending_cents"] == 104_000  # 50 % + 30 % of 1.300 €
+
+    key = {"Idempotency-Key": "11111111-1111-4111-8111-111111111111"}
+    body = {"target_cents": 312_000, "starting_cents": 50_000}
+    for _ in range(2):  # a double tap must not book the starting amount twice
+        reserve = api.ok(api.post("/api/reserve/setup", body, headers=key))
+    assert (reserve["balance_cents"], reserve["minimum_cents"]) == (50_000, 312_000)
+    assert reserve["entries"][0]["note"] == "Startbestand"
+    assert len(reserve["entries"]) == 1
+
+    warnings = api.ok(api.get("/api/dashboard"))["warnings"]
+    low = next(w for w in warnings if w["code"] == "reserve_low")
+    assert low["severity"] == "info"
+
+    # Changing only the target later books nothing.
+    reserve = api.ok(api.post("/api/reserve/setup", {"target_cents": 400_000}))
+    assert (reserve["balance_cents"], reserve["minimum_cents"], len(reserve["entries"])) == (
+        50_000,
+        400_000,
+        1,
+    )

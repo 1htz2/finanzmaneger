@@ -15,6 +15,7 @@ from app.core import clock
 from app.core.errors import ConflictError, DomainValidationError, NotFoundError
 from app.domain.budget_models import Bucket
 from app.domain.enums import (
+    AccountEntryKind,
     AllocationSource,
     CategoryKind,
     CorrectionAction,
@@ -46,7 +47,7 @@ from app.schemas.transactions import (
     TransactionUpdate,
     TransferIn,
 )
-from app.services import ledgers
+from app.services import accounts, debts, ledgers
 from app.services.periods import (
     active_period,
     bucket_statuses,
@@ -103,6 +104,7 @@ def list_transactions(
     max_amount: int | None = None,
     period_id: int | None = None,
     is_recurring: bool | None = None,
+    debt_id: int | None = None,
     sort: SortField = "occurred_at",
     order: str = "desc",
     limit: int = 50,
@@ -134,6 +136,8 @@ def list_transactions(
         stmt = stmt.where(Transaction.amount_cents <= max_amount)
     if period_id is not None:
         stmt = stmt.where(Transaction.period_id == period_id)
+    if debt_id is not None:
+        stmt = stmt.where(Transaction.debt_id == debt_id)
     if is_recurring is not None:
         recurring = (Transaction.is_recurring.is_(True)) | (Transaction.recurring_expense_id.is_not(None))
         stmt = stmt.where(recurring if is_recurring else ~recurring)
@@ -172,10 +176,16 @@ def list_transactions(
 
 
 def create_expense(db: Session, data: ExpenseIn) -> TransactionOut:
+    debt_id = data.debt_id
     if data.recurring_expense_id is not None:
         recurring = db.get(RecurringExpense, data.recurring_expense_id)
         if recurring is None:
             raise DomainValidationError("Fixkosten-Eintrag nicht gefunden")
+        # A payment of a planned instalment repays the linked debt.
+        if debt_id is None:
+            debt_id = recurring.debt_id
+    if debt_id is not None:
+        debts.check_repayment(db, debt_id, data.amount_cents, new=True)
     category = _category(db, data.category_id, {CategoryKind.FIXED, CategoryKind.LEISURE})
     period = require_period_at(db, data.occurred_at)
     before = snapshot_closed(db, [period.id])
@@ -189,6 +199,7 @@ def create_expense(db: Session, data: ExpenseIn) -> TransactionOut:
         merchant=data.merchant,
         period_id=period.id,
         recurring_expense_id=data.recurring_expense_id,
+        debt_id=debt_id,
         is_recurring=data.is_recurring or data.recurring_expense_id is not None,
     )
     db.add(txn)
@@ -225,6 +236,9 @@ def update_transaction(db: Session, txn_id: int, data: TransactionUpdate) -> Tra
                 f"Betrag und Datum von Einnahmen und Umbuchungen sind fest. {hint}",
                 code="immutable_money_fields",
             )
+        if fields.get("debt_id") is not None:
+            raise DomainValidationError("Nur Ausgaben können eine Schuld zurückzahlen.")
+        fields.pop("debt_id", None)
         if "category_id" in fields and fields["category_id"] is not None:
             _category(db, fields["category_id"], {CategoryKind.INCOME})
         for key in ("description", "merchant", "category_id", "is_recurring"):
@@ -239,6 +253,13 @@ def update_transaction(db: Session, txn_id: int, data: TransactionUpdate) -> Tra
         if fields.get("occurred_at") is not None
         else txn.period_id
     )
+    new_debt_id = fields.get("debt_id", txn.debt_id)
+    new_amount = fields.get("amount_cents") or txn.amount_cents
+    if new_debt_id is not None and (new_debt_id != txn.debt_id or new_amount != txn.amount_cents):
+        debts.check_repayment(
+            db, new_debt_id, new_amount, exclude_txn_id=txn.id, new=new_debt_id != txn.debt_id
+        )
+    txn.debt_id = new_debt_id
     before = snapshot_closed(db, [txn.period_id, new_period_id])
     if "category_id" in fields and fields["category_id"] is not None:
         category = _category(db, fields["category_id"], {CategoryKind.FIXED, CategoryKind.LEISURE})
@@ -356,6 +377,16 @@ def create_income(db: Session, data: IncomeIn) -> TransactionOut:
                 transaction_id=txn.id,
                 note=data.description,
             )
+            if data.account_id is not None:
+                accounts.book(
+                    db,
+                    data.account_id,
+                    data.amount_cents,
+                    AccountEntryKind.INCOME,
+                    data.occurred_at,
+                    transaction_id=txn.id,
+                    note=data.description,
+                )
     db.flush()
     if data.target == Pot.PERIOD:
         settle_closed_periods(
@@ -438,6 +469,16 @@ def create_transfer(db: Session, data: TransferIn) -> TransactionOut:
                 ledgers.book_savings(
                     db, amount, SavingsKind.TRANSFER, now, transaction_id=txn.id, note=txn.description
                 )
+                if data.account_id is not None:
+                    accounts.book(
+                        db,
+                        data.account_id,
+                        amount,
+                        AccountEntryKind.TRANSFER,
+                        now,
+                        transaction_id=txn.id,
+                        note=txn.description,
+                    )
             case Pot.PERIOD:
                 assert period is not None and data.bucket is not None
                 db.add(
@@ -450,7 +491,7 @@ def create_transfer(db: Session, data: TransferIn) -> TransactionOut:
                         note=txn.description,
                     )
                 )
-    db.flush()
+    accounts.check_invariants(db)
     db.refresh(txn)
     return to_out(txn)
 
@@ -534,6 +575,8 @@ def reverse_transaction(db: Session, txn_id: int, *, confirm: bool, reason: str 
             transaction_id=txn.id,
             note=note,
         )
+    accounts.mirror_for_reversal(db, txn.id, note)
+    accounts.check_invariants(db)
     txn.reversed_at = now
     db.flush()
     settle_closed_periods(

@@ -12,10 +12,14 @@ from sqlalchemy.orm import Session
 from app.core import clock
 from app.domain.money import format_eur
 from app.models import (
+    Account,
+    AccountEntry,
+    AccountValuation,
     AppSettings,
     BudgetAllocation,
     BudgetPeriod,
     Category,
+    Debt,
     PeriodCorrection,
     RecurringExpense,
     ReserveEntry,
@@ -28,6 +32,7 @@ from app.models import (
 EXPORTED = (
     AppSettings,
     Category,
+    Debt,
     BudgetPeriod,
     BudgetAllocation,
     Transaction,
@@ -36,6 +41,9 @@ EXPORTED = (
     SavingsEntry,
     SavingsGoal,
     SavingsAllocation,
+    Account,
+    AccountEntry,
+    AccountValuation,
     PeriodCorrection,
 )
 

@@ -120,6 +120,7 @@ export interface Transaction {
   merchant: string | null
   period_id: number | null
   recurring_expense_id: number | null
+  debt_id: number | null
   is_recurring: boolean
   income_kind: 'salary' | 'other' | null
   income_target: Pot | null
@@ -172,6 +173,7 @@ export interface Reserve {
   history: BalancePoint[]
   total_from_periods_cents: number
   total_withdrawn_cents: number
+  monthly_spending_cents: number | null
 }
 
 export interface Goal {
@@ -217,6 +219,7 @@ export interface RecurringExpense {
   due_date: string | null
   active: boolean
   description: string | null
+  debt_id: number | null
   monthly_equivalent_cents: number
   created_at: string
   updated_at: string
@@ -277,6 +280,7 @@ export interface UpcomingCost {
 export interface Dashboard {
   active_period: PeriodSummary | null
   reserve_balance_cents: number
+  debt_remaining_cents: number
   savings: { balance_cents: number; allocated_cents: number; unallocated_cents: number }
   leisure_pace: Pace | null
   pace_unavailable_reason: 'no_active_period' | 'no_expected_payday' | 'payday_passed' | null
@@ -326,4 +330,90 @@ export interface CorrectionImpact {
   reserve_delta_cents: number
   reserve_balance_after_cents: number
   buckets_changed: boolean
+}
+
+export interface Debt {
+  id: number
+  name: string
+  creditor: string | null
+  original_cents: number
+  opening_balance_cents: number
+  monthly_rate_cents: number | null
+  note: string | null
+  archived: boolean
+  status: 'open' | 'paid_off'
+  repaid_cents: number
+  remaining_cents: number
+  progress_bp: number
+  repayment_count: number
+  last_repayment_at: string | null
+  projected_payoff: string | null
+  planned_recurring_ids: number[]
+  created_at: string
+  updated_at: string
+}
+
+export interface DebtsOverview {
+  items: Debt[]
+  total_remaining_cents: number
+  total_original_cents: number
+  total_monthly_rate_cents: number
+  repaid_this_period_cents: number
+}
+
+export type AccountKind = 'checking' | 'savings_account' | 'fixed_deposit' | 'brokerage' | 'crypto' | 'cash' | 'other'
+
+export interface Valuation {
+  id: number
+  value_cents: number
+  booked_cents: number
+  valued_at: string
+  note: string | null
+}
+
+export interface Account {
+  id: number
+  name: string
+  institution: string | null
+  kind: AccountKind
+  color_index: number
+  savings_share_bp: number
+  holds_reserve: boolean
+  archived: boolean
+  booked_cents: number
+  gain_cents: number
+  gain_bp: number | null
+  value_cents: number
+  last_valued_at: string | null
+  reserve_cents: number
+  total_cents: number
+  valuations: Valuation[]
+  created_at: string
+}
+
+export interface AccountEntry {
+  id: number
+  account_id: number
+  amount_cents: number
+  kind: string
+  occurred_at: string
+  period_id: number | null
+  transaction_id: number | null
+  note: string | null
+}
+
+export interface Wealth {
+  accounts: Account[]
+  savings_balance_cents: number
+  unassigned_cents: number
+  reserve_cents: number
+  reserve_account_id: number | null
+  gains_cents: number
+  total_assets_cents: number
+  debt_cents: number
+  net_worth_cents: number
+  shares_total_bp: number
+  institutions: { label: string; total_cents: number; account_ids: number[] }[]
+  entries: AccountEntry[]
+  history: BalancePoint[]
 }

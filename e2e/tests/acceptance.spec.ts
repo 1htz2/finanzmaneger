@@ -121,7 +121,7 @@ test('acceptance flow: two salary periods, expenses, fixed costs, goals, reserve
 
   // 10: reserve is still empty before the first close
   await goto(page, 'Reserve')
-  await expect(page.getByText('Aktuelle Reserve').locator('..')).toContainText('0,00 €')
+  await expect(page.getByRole('region', { name: 'Notfallreserve' })).toContainText('0,00 €')
 
   // 11-13: second salary closes the period; 50 € fixed + 210 € leisure go to the reserve
   await page.getByRole('button', { name: 'Gehalt', exact: true }).click()
@@ -134,7 +134,7 @@ test('acceptance flow: two salary periods, expenses, fixed costs, goals, reserve
   await expect(dialog.getByText('Neue Budgetperiode gestartet')).toBeVisible()
   await expect(dialog).toContainText('260,00 € zur Reserve')
   await dialog.getByRole('button', { name: 'Fertig' }).click()
-  await expect(page.getByText('Aktuelle Reserve').locator('..')).toContainText('260,00 €')
+  await expect(page.getByRole('region', { name: 'Notfallreserve' })).toContainText('260,00 €')
   await expect(page.getByText('Übertrag aus Periode')).toBeVisible()
   await shot(page, '09-reserve-after-close')
 
@@ -170,7 +170,7 @@ test('closed-period correction asks for confirmation and books the delta', async
 
   await addExpenseExpectCorrection(page)
   await goto(page, 'Reserve')
-  await expect(page.getByText('Aktuelle Reserve').locator('..')).toContainText('240,00 €')
+  await expect(page.getByRole('region', { name: 'Notfallreserve' })).toContainText('240,00 €')
   await expect(page.getByText('Korrektur abgeschlossener Periode')).toBeVisible()
   await shot(page, '13-correction')
 })
@@ -215,4 +215,119 @@ test('an expense linked to a planned fixed cost closes the plan instead of count
   await expect(page.getByText('Noch offen (Periode)').locator('..')).toContainText('0,00 €')
   await expect(page.getByText('Bezahlt (Periode)').locator('..')).toContainText('19,99 €')
   await shot(page, '14-linked-fixed-cost')
+})
+
+test('emergency reserve setup and a debt repaid through an ordinary expense', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Benutzername').fill('oskar')
+  await page.getByLabel('Passwort').fill('mein-sicheres-passwort')
+  await page.getByRole('button', { name: 'Anmelden' }).click()
+
+  // Emergency reserve: target with a suggestion from the budget, plus money that already exists.
+  await goto(page, 'Reserve')
+  const reserve = page.getByRole('region', { name: 'Notfallreserve' })
+  await reserve.getByRole('button', { name: 'Notfallreserve einrichten' }).click()
+  let dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('button', { name: /^3 Monate/ })).toBeVisible()
+  await dialog.getByLabel('Zielbetrag').fill('3.000')
+  await dialog.getByLabel('Schon vorhanden (optional)').fill('500')
+  await shot(page, '15-reserve-setup')
+  await dialog.getByRole('button', { name: 'Einrichten' }).click()
+  await expect(page.getByText('Notfallreserve eingerichtet', { exact: true })).toBeVisible()
+  await expect(reserve).toContainText('von 3.000,00 €')
+  await expect(page.getByText('Startbestand')).toBeVisible()
+  await shot(page, '16-reserve-with-target')
+
+  // Debts: record one, then repay a rate as a normal expense.
+  await goto(page, 'Schulden')
+  await expect(page.getByText('Noch keine Schulden erfasst')).toBeVisible()
+  await page.getByRole('button', { name: 'Schuld erfassen' }).first().click()
+  dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Bezeichnung').fill('Ratenkauf Laptop')
+  await dialog.getByLabel('Bei wem (optional)').fill('Elektromarkt')
+  await dialog.getByLabel('Ursprünglicher Betrag').fill('1.200')
+  await dialog.getByLabel('Monatliche Rate (optional)').fill('100')
+  await dialog.getByRole('button', { name: 'Speichern' }).click()
+  await expect(page.getByText('Schuld erfasst', { exact: true })).toBeVisible()
+  await expect(page.getByText('Restschuld gesamt').locator('..')).toContainText('1.200,00 €')
+
+  await page.getByRole('button', { name: 'Rückzahlung buchen' }).click()
+  dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Betrag')).toHaveValue('100,00')
+  await expect(dialog.getByLabel('Rückzahlung einer Schuld (optional)')).toContainText('Ratenkauf Laptop')
+  await shot(page, '17-debt-repayment')
+  await dialog.getByRole('button', { name: 'Erfassen' }).click()
+  await expect(page.getByText('Buchung erfasst', { exact: true })).toBeVisible()
+  await expect(page.getByText('Restschuld gesamt').locator('..')).toContainText('1.100,00 €')
+  await expect(page.getByText('8 % getilgt')).toBeVisible()
+  await shot(page, '18-debts')
+
+  await page.getByRole('link', { name: '1 Rückzahlung' }).click()
+  await expect(page.getByText('Rückzahlungen: Ratenkauf Laptop')).toBeVisible()
+  await expect(page.getByText('Rate Ratenkauf Laptop')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Dashboard' }).click()
+  await expect(page.getByRole('link', { name: /Offene Schulden/ })).toContainText('1.100,00 €')
+})
+
+test('wealth: accounts, savings split, assignment and a depot valuation', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Benutzername').fill('oskar')
+  await page.getByLabel('Passwort').fill('mein-sicheres-passwort')
+  await page.getByRole('button', { name: 'Anmelden' }).click()
+
+  await goto(page, 'Vermögen')
+  await expect(page.getByText('Wo liegt dein Geld?')).toBeVisible()
+  await shot(page, '19-wealth-empty')
+
+  // Quick start prefills the name and kind.
+  await page.getByRole('button', { name: 'Tagesgeld' }).click()
+  let dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Name')).toHaveValue('Tagesgeld')
+  await dialog.getByLabel('Bank oder Anbieter (optional)').fill('ING')
+  await dialog.getByLabel('Anteil der Sparrate in % (optional)').fill('40')
+  await dialog.getByRole('switch').click()
+  await dialog.getByRole('button', { name: 'Speichern' }).click()
+  await expect(page.getByText('Anlageort angelegt', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Anlageort', exact: true }).click()
+  dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: /^Depot/ }).click()
+  await dialog.getByLabel('Name').fill('ETF-Depot')
+  await dialog.getByLabel('Bank oder Anbieter (optional)').fill('Trade Republic')
+  await dialog.getByLabel('Anteil der Sparrate in % (optional)').fill('60')
+  await dialog.getByRole('button', { name: 'Speichern' }).click()
+  await expect(page.getByText('Anlageort angelegt', { exact: true })).toBeVisible()
+  await expect(dialog).toBeHidden()
+
+  // Savings from earlier salaries have no place yet: assign them to the depot.
+  await expect(page.getByText('ohne Anlageort').first()).toBeVisible()
+  await page.getByRole('button', { name: 'Zuordnen' }).first().click()
+  dialog = page.getByRole('dialog')
+  await pick(page, 'Anlageort', 'ETF-Depot · 0,00 €')
+  await dialog.getByRole('button', { name: 'Zuordnen' }).click()
+  await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
+  await expect(dialog).toBeHidden()
+
+  // A depot value above the booked amount shows a gain.
+  await page.getByRole('button', { name: 'Wert' }).click()
+  dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Depotwert heute').fill('5.000')
+  await dialog.getByRole('button', { name: 'Wert speichern' }).click()
+  await expect(page.getByText('Wert gespeichert', { exact: true })).toBeVisible()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText('Eingezahlt')).toBeVisible()
+  await expect(page.getByText('60 % der Sparrate')).toBeVisible()
+  await expect(page.getByText('Reserve liegt hier')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Nach Bank' }).or(page.getByText('Nach Bank'))).toBeVisible()
+  await page.waitForTimeout(800)
+  await shot(page, '20-wealth-mobile')
+
+  await page.setViewportSize({ width: 1366, height: 900 })
+  await page.waitForTimeout(800)
+  await shot(page, '21-wealth-desktop')
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.evaluate(() => document.documentElement.classList.add('dark'))
+  await page.waitForTimeout(400)
+  await shot(page, '22-wealth-desktop-dark')
 })

@@ -21,3 +21,19 @@ def format_eur(cents: Cents) -> str:
     euros, rest = divmod(abs(cents), 100)
     grouped = f"{euros:,}".replace(",", ".")
     return f"{sign}{grouped},{rest:02d} €"
+
+
+def split_weighted[K](total: Cents, weights: dict[K, int]) -> dict[K, Cents]:
+    """Largest-remainder split of ``total`` by integer weights (in insertion order).
+
+    The parts always add up to ``total`` exactly; ties go to the earlier key."""
+    whole = sum(weights.values())
+    if whole <= 0:
+        raise ValueError("Die Gewichte müssen zusammen größer als 0 sein")
+    raw = {k: divmod(total * w, whole) for k, w in weights.items()}
+    result = {k: q for k, (q, _) in raw.items()}
+    keys = list(weights)
+    order = sorted(keys, key=lambda k: (-raw[k][1], keys.index(k)))
+    for key in order[: total - sum(result.values())]:
+        result[key] += 1
+    return result

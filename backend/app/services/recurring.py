@@ -47,6 +47,7 @@ def to_out(r: RecurringExpense) -> RecurringOut:
         due_date=r.due_date,
         active=r.active,
         description=r.description,
+        debt_id=r.debt_id,
         monthly_equivalent_cents=monthly_equivalent(r.amount_cents, r.interval),
         created_at=r.created_at,
         updated_at=r.updated_at,

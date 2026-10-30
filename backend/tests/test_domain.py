@@ -150,5 +150,5 @@ def test_warning_thresholds() -> None:
 
 def test_fixed_reserve_and_large_expense_warnings() -> None:
     assert _warnings(0, fixed_spent=40_000, open=30_000) == ["fixed_insufficient"]
-    assert _warnings(0, reserve=5_000, minimum=10_000) == ["reserve_low"]
+    assert _warnings(0, reserve=5_000, minimum=10_000) == ["reserve_low"]  # info: still being built up
     assert _warnings(0, large=[LargeExpense("TV", 80_000)]) == ["large_expense"]

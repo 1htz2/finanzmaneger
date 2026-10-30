@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 
 import { errorMessage } from '@/components/common'
 import { useCorrection } from '@/components/CorrectionProvider'
+import { AccountPicker, NO_ACCOUNT, accountIdOrNull } from '@/components/AccountPicker'
 import { MoneyInput } from '@/components/MoneyInput'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
@@ -23,12 +24,13 @@ import { api, newIdempotencyKey } from '@/lib/api'
 import { POTS } from '@/lib/domain'
 import {
   centsToInput,
+  formatEur,
   isoToLocalInput,
   localInputToApi,
   nowLocalInput,
   parseEuroInput,
 } from '@/lib/format'
-import { useCategories, useFinanceMutation, useGoals, useRecurring } from '@/lib/queries'
+import { useCategories, useDebts, useFinanceMutation, useGoals, useRecurring } from '@/lib/queries'
 import type { Pot, SpendingBucket, Transaction } from '@/lib/types'
 
 export type TxTab = 'expense' | 'income' | 'transfer'
@@ -38,6 +40,9 @@ export interface TransactionDialogState {
   tab?: TxTab
   edit?: Transaction
   presetCategoryId?: number
+  presetDebtId?: number
+  presetAmountCents?: number
+  presetDescription?: string
 }
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
@@ -59,11 +64,13 @@ export function TransactionDialog({
   const edit = state.edit
   // Fresh state per dialog session: the provider remounts this component with a new key on each open.
   const [tab, setTab] = useState<TxTab>(edit?.type ?? state.tab ?? 'expense')
-  const [amount, setAmount] = useState(edit ? centsToInput(edit.amount_cents) : '')
+  const [amount, setAmount] = useState(
+    edit ? centsToInput(edit.amount_cents) : state.presetAmountCents ? centsToInput(state.presetAmountCents) : '',
+  )
   const [categoryId, setCategoryId] = useState<string>(
     edit?.category ? String(edit.category.id) : state.presetCategoryId ? String(state.presetCategoryId) : '',
   )
-  const [description, setDescription] = useState(edit?.description ?? '')
+  const [description, setDescription] = useState(edit?.description ?? state.presetDescription ?? '')
   const [merchant, setMerchant] = useState(edit?.merchant ?? '')
   const [when, setWhen] = useState(edit ? isoToLocalInput(edit.occurred_at) : nowLocalInput())
   const [whenEdited, setWhenEdited] = useState(false)
@@ -73,13 +80,21 @@ export function TransactionDialog({
   const [fromPot, setFromPot] = useState<Pot>('reserve')
   const [toPot, setToPot] = useState<Pot>('savings')
   const [goalId, setGoalId] = useState<string>('none')
+  const [accountId, setAccountId] = useState<string>(NO_ACCOUNT)
   const [recurringId, setRecurringId] = useState<string>(edit?.recurring_expense_id ? String(edit.recurring_expense_id) : 'none')
+  const [debtId, setDebtId] = useState<string>(
+    edit?.debt_id ? String(edit.debt_id) : state.presetDebtId ? String(state.presetDebtId) : 'none',
+  )
   const [invalid, setInvalid] = useState(false)
   const [idempotencyKey] = useState(newIdempotencyKey)
 
   const categories = useCategories()
   const goals = useGoals()
   const recurring = useRecurring()
+  const debts = useDebts()
+  const debtChoices = (debts.data?.items ?? []).filter(
+    (d) => (!d.archived && d.status === 'open') || String(d.id) === debtId,
+  )
   // Linking a booked payment to its planned fixed cost keeps it from being counted twice.
   const plansForCategory = (recurring.data ?? []).filter(
     (r) => r.active && categoryId !== '' && String(r.category.id) === categoryId,
@@ -114,6 +129,7 @@ export function TransactionDialog({
               merchant: merchant || null,
               occurred_at,
               is_recurring: isRecurring,
+              debt_id: debtId === 'none' ? null : Number(debtId),
             }
           : { description, ...(categoryId ? { category_id: Number(categoryId) } : {}) }
       return runCorrection((flags) => api.patch<Transaction>(`/transactions/${edit.id}`, { ...body, ...flags }))
@@ -131,6 +147,7 @@ export function TransactionDialog({
             occurred_at,
             is_recurring: isRecurring,
             recurring_expense_id: linkedPlan,
+            debt_id: debtId === 'none' ? null : Number(debtId),
             ...flags,
           },
           idempotencyKey,
@@ -148,6 +165,7 @@ export function TransactionDialog({
             occurred_at,
             target,
             bucket,
+            account_id: target === 'savings' ? accountIdOrNull(accountId) : null,
             ...flags,
           },
           idempotencyKey,
@@ -163,6 +181,7 @@ export function TransactionDialog({
         amount_cents: cents,
         bucket: involvesPeriod ? bucket : null,
         savings_goal_id: fromPot === 'savings' && goalId !== 'none' ? Number(goalId) : null,
+        account_id: fromPot === 'savings' || toPot === 'savings' ? accountIdOrNull(accountId) : null,
         note: description || null,
       },
       idempotencyKey,
@@ -290,6 +309,14 @@ export function TransactionDialog({
                 </Select>
               </Field>
             )}
+            {(fromPot === 'savings' || toPot === 'savings') && (
+              <AccountPicker
+                id="tx-account"
+                label={fromPot === 'savings' ? 'Von Anlageort' : 'Auf Anlageort'}
+                value={accountId}
+                onChange={setAccountId}
+              />
+            )}
             <Field label="Notiz (optional)" htmlFor="tx-desc">
               <Input id="tx-desc" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={255} />
             </Field>
@@ -377,6 +404,7 @@ export function TransactionDialog({
                   </Select>
                 </Field>
                 {target === 'period' && <BucketSelect value={bucket} onChange={setBucket} label="Budget-Topf" />}
+                {target === 'savings' && <AccountPicker id="tx-account" label="Auf Anlageort" value={accountId} onChange={setAccountId} />}
               </>
             )}
 
@@ -397,6 +425,27 @@ export function TransactionDialog({
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   Zugeordnet gilt der geplante Betrag als bezahlt und wird nicht doppelt gezählt.
+                </p>
+              </Field>
+            )}
+
+            {tab === 'expense' && debtChoices.length > 0 && (
+              <Field label="Rückzahlung einer Schuld (optional)" htmlFor="tx-debt">
+                <Select value={debtId} onValueChange={setDebtId}>
+                  <SelectTrigger id="tx-debt" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Rückzahlung</SelectItem>
+                    {debtChoices.map((d) => (
+                      <SelectItem key={d.id} value={String(d.id)}>
+                        {d.name} · noch {formatEur(d.remaining_cents)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Die Ausgabe zählt normal im Budget und senkt zusätzlich die Restschuld.
                 </p>
               </Field>
             )}

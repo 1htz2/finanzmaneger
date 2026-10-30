@@ -4,6 +4,10 @@ Ein lokaler, persönlicher Finanzmanager für eine Person. Er beantwortet eine F
 
 Jeder Gehaltseingang startet einen neuen Budgetzeitraum und wird automatisch aufgeteilt: 20 % Sparen, 50 % Fixkosten, 30 % Freizeit. Was am Ende eines Zeitraums von Fixkosten und Freizeit übrig bleibt, wandert automatisch in die Reserve. Alles läuft auf deinem Rechner, ohne Cloud-Dienste.
 
+Unter **Reserve** richtest du deine Notfallreserve ein: einen Zielbetrag (mit Vorschlägen für drei oder sechs Monatsausgaben) und das Geld, das du schon zur Seite gelegt hast. Unter **Schulden** erfasst du Kredite, Ratenkäufe oder geliehenes Geld. Eine Rückzahlung ist eine normale Ausgabe, die einer Schuld zugeordnet wird. Sie zählt einmal im Budget und senkt die Restschuld.
+
+Unter **Vermögen** legst du Anlageorte an: Tagesgeld, Depot, Krypto, Bargeld oder Konten bei verschiedenen Banken. Die Sparrate wird bei jedem Gehalt nach deinen Anteilen automatisch verteilt, du kannst Geld zuordnen und zwischen Orten verschieben. Für Depots trägst du den aktuellen Wert von Hand ein und siehst Gewinn oder Verlust. Die Seite zeigt dein Nettovermögen, die Summen je Bank und wo die Reserve liegt. Kurse werden nicht aus dem Internet geladen.
+
 - Backend: Python 3.12, FastAPI, SQLAlchemy 2, Alembic, SQLite
 - Frontend: React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui, Recharts, TanStack Query, React Router
 - Betrieb: ein Prozess liefert API und App aus (gleiche Origin), als PWA auf dem iPhone installierbar

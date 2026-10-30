@@ -1,9 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
+import fs from 'node:fs'
 import path from 'node:path'
 
 const backend = path.resolve(import.meta.dirname, '../backend')
 const python = path.join(backend, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python')
 const dataDir = path.resolve(import.meta.dirname, 'artifacts/data')
+
+// Every run starts from an empty database. The web server starts before globalSetup,
+// so the folder is cleared here, in the main process only (workers load this file too).
+if (process.env.TEST_WORKER_INDEX === undefined) fs.rmSync(dataDir, { recursive: true, force: true })
 
 export default defineConfig({
   testDir: './tests',

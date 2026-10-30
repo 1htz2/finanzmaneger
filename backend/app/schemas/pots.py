@@ -7,6 +7,7 @@ from app.schemas.common import (
     MAX_CENTS,
     Instant,
     Name,
+    NonNegativeCents,
     OptionalText,
     PositiveCents,
     Schema,
@@ -39,12 +40,19 @@ class ReserveOut(Schema):
     history: list[BalancePoint]
     total_from_periods_cents: int
     total_withdrawn_cents: int
+    # Fixed + leisure budget of the latest period: what one month of living costs, for target suggestions.
+    monthly_spending_cents: int | None
 
 
 class ReserveDepositIn(Schema):
     amount_cents: PositiveCents
     note: ShortText
     occurred_at: Instant | None = None
+
+
+class ReserveSetupIn(Schema):
+    target_cents: PositiveCents
+    starting_cents: NonNegativeCents = 0
 
 
 class ReserveWithdrawIn(Schema):
@@ -112,3 +120,4 @@ class SavingsWithdrawIn(Schema):
     amount_cents: PositiveCents
     reason: ShortText
     goal_id: int | None = None
+    account_id: int | None = None

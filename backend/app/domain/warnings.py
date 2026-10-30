@@ -110,9 +110,10 @@ def _reserve_minimum(ctx: WarningContext) -> list[BudgetWarning]:
     return [
         BudgetWarning(
             "reserve_low",
-            Severity.WARNING,
-            "Reserve unter Mindesthöhe",
-            f"Reserve {format_eur(ctx.reserve_balance)}, Mindesthöhe {format_eur(ctx.reserve_minimum)}.",
+            Severity.INFO,
+            "Notfallreserve noch unter Ziel",
+            f"{format_eur(ctx.reserve_balance)} von {format_eur(ctx.reserve_minimum)}, "
+            f"es fehlen {format_eur(ctx.reserve_minimum - ctx.reserve_balance)}.",
         )
     ]
 

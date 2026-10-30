@@ -47,7 +47,7 @@ from app.schemas.periods import (
     SalaryResultOut,
     SplitOut,
 )
-from app.services import ledgers
+from app.services import accounts, ledgers
 from app.services.settings import get_app_settings
 
 # ---------------------------------------------------------------- queries
@@ -484,6 +484,7 @@ def _close_and_open(db: Session, data: SalaryIn) -> _Transition:
         transaction_id=salary.id,
         note=f"{model.shares_percent[Bucket.SAVINGS]} % von {format_eur(data.amount_cents)}",
     )
+    accounts.auto_split(db, opened.id, split[Bucket.SAVINGS], data.received_at)
     db.flush()
     db.refresh(opened)
     if active is not None:
@@ -581,6 +582,8 @@ def correct_active_salary(db: Session, data: SalaryCorrectionIn) -> PeriodSummar
         transaction_id=salary.id,
         note=note,
     )
+    accounts.adjust_salary_split(db, period.id, old[Bucket.SAVINGS], new[Bucket.SAVINGS])
+    accounts.check_invariants(db)
     period.net_salary_cents = data.amount_cents
     salary.amount_cents = data.amount_cents
     db.flush()

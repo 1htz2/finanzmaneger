@@ -14,6 +14,8 @@ import { queryClient, useAuthStatus } from '@/lib/queries'
 import { AuthPage } from '@/pages/AuthPage'
 
 const BudgetPage = lazy(() => import('@/pages/BudgetPage').then((m) => ({ default: m.BudgetPage })))
+const WealthPage = lazy(() => import('@/pages/WealthPage').then((m) => ({ default: m.WealthPage })))
+const DebtsPage = lazy(() => import('@/pages/DebtsPage').then((m) => ({ default: m.DebtsPage })))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const FixedCostsPage = lazy(() => import('@/pages/FixedCostsPage').then((m) => ({ default: m.FixedCostsPage })))
 const ReservePage = lazy(() => import('@/pages/ReservePage').then((m) => ({ default: m.ReservePage })))
@@ -61,7 +63,9 @@ function Gate() {
             <Route path="/budget" element={<BudgetPage />} />
             <Route path="/fixkosten" element={<FixedCostsPage />} />
             <Route path="/reserve" element={<ReservePage />} />
+            <Route path="/vermoegen" element={<WealthPage />} />
             <Route path="/sparziele" element={<SavingsPage />} />
+            <Route path="/schulden" element={<DebtsPage />} />
             <Route path="/statistiken" element={<StatsPage />} />
             <Route path="/einstellungen" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

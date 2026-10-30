@@ -80,6 +80,23 @@ export function UsageBar({ bucket, usedBp }: { bucket: Bucket; usedBp: number | 
   )
 }
 
+/** Progress toward a goal that is not a budget bucket (debt repaid, reserve target). */
+export function ProgressBar({ bp, color = 'var(--primary)', label }: { bp: number; color?: string; label: string }) {
+  const pct = Math.min(Math.max(bp / 100, 0), 100)
+  return (
+    <div
+      className="h-2 w-full overflow-hidden rounded-full bg-muted"
+      role="progressbar"
+      aria-label={label}
+      aria-valuenow={Math.round(pct)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
+      <div className="h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${pct}%`, background: color }} />
+    </div>
+  )
+}
+
 interface TipProps {
   active?: boolean
   payload?: readonly { dataKey?: unknown; name?: unknown; value?: unknown; color?: string }[]

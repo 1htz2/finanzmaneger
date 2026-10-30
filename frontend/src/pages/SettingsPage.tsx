@@ -68,9 +68,9 @@ function BudgetSettings({ settings }: { settings: AppSettings }) {
         <form onSubmit={submit} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="s-min">Mindesthöhe der Reserve</Label>
+              <Label htmlFor="s-min">Ziel der Notfallreserve</Label>
               <MoneyInput id="s-min" value={minimum} onChange={(e) => setMinimum(e.target.value)} />
-              <p className="text-xs text-muted-foreground">0 schaltet die Warnung aus.</p>
+              <p className="text-xs text-muted-foreground">0 schaltet Ziel und Hinweis aus.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="s-large">Große Ausgabe ab</Label>

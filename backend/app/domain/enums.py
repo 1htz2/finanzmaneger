@@ -58,6 +58,29 @@ class SavingsKind(StrEnum):
     REVERSAL = "reversal"
 
 
+class AccountKind(StrEnum):
+    """Where money lies. Only labels and icons depend on it; the bookkeeping is the same."""
+
+    CHECKING = "checking"
+    SAVINGS_ACCOUNT = "savings_account"
+    FIXED_DEPOSIT = "fixed_deposit"
+    BROKERAGE = "brokerage"
+    CRYPTO = "crypto"
+    CASH = "cash"
+    OTHER = "other"
+
+
+class AccountEntryKind(StrEnum):
+    AUTO_SPLIT = "auto_split"
+    SALARY_CORRECTION = "salary_correction"
+    ASSIGN = "assign"
+    MOVE = "move"
+    INCOME = "income"
+    TRANSFER = "transfer"
+    WITHDRAWAL = "withdrawal"
+    REVERSAL = "reversal"
+
+
 class CorrectionAction(StrEnum):
     CREATE = "create"
     UPDATE = "update"

@@ -28,6 +28,7 @@ DEFAULT_CATEGORIES: dict[CategoryKind, list[tuple[str, str]]] = {
         ("Versicherungen", "#0d9488"),
         ("Strom und Energie", "#ca8a04"),
         ("Mobilität", "#4f46e5"),
+        ("Kredite und Raten", "#b45309"),
         ("Sonstige Fixkosten", "#475569"),
     ],
     CategoryKind.INCOME: [

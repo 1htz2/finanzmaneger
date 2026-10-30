@@ -3,6 +3,9 @@ import {
   Banknote,
   CalendarClock,
   CalendarDays,
+  ChevronRight,
+  Gem,
+  HandCoins,
   Info,
   Landmark,
   OctagonAlert,
@@ -20,12 +23,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BUCKETS, bucketOf } from '@/lib/domain'
 import { formatDate, formatPercent, formatShortDate, periodRange } from '@/lib/format'
-import { useDashboard } from '@/lib/queries'
+import { useDashboard, useWealth } from '@/lib/queries'
 import type { BudgetWarning, Dashboard, PeriodSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 export function DashboardPage() {
   const { data, isLoading, error, refetch } = useDashboard()
+  const wealth = useWealth()
   const { recordSalary } = useActions()
 
   if (isLoading) return <LoadingState rows={4} />
@@ -93,6 +97,32 @@ export function DashboardPage() {
           value={<Money cents={data.savings.balance_cents} />}
           hint={<>davon <Money cents={data.savings.allocated_cents} /> in Sparzielen</>}
         />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          to="/vermoegen"
+          className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm transition-colors hover:bg-muted/50"
+        >
+          <Gem className="size-4 text-muted-foreground" />
+          <span className="flex-1">
+            Nettovermögen{' '}
+            {wealth.data ? <Money cents={wealth.data.net_worth_cents} className="font-semibold" /> : '…'}
+          </span>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+        {data.debt_remaining_cents > 0 && (
+          <Link
+            to="/schulden"
+            className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm transition-colors hover:bg-muted/50"
+          >
+            <HandCoins className="size-4 text-muted-foreground" />
+            <span className="flex-1">
+              Offene Schulden <Money cents={data.debt_remaining_cents} className="font-semibold" />
+            </span>
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </Link>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

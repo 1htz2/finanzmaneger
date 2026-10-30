@@ -64,6 +64,15 @@
     --good: #0ca30c;
     --warn: #c98500;
     --critical: #d03b3b;
+    /* Account identity colors: the dataviz reference categorical order, fixed per account. */
+    --acct-1: #2a78d6;
+    --acct-2: #eb6834;
+    --acct-3: #1baf7a;
+    --acct-4: #eda100;
+    --acct-5: #e87ba4;
+    --acct-6: #008300;
+    --acct-7: #4a3aa7;
+    --acct-8: #e34948;
     --chart-grid: oklch(0.93 0 0);
     --background: oklch(0.985 0.002 95);
     --foreground: oklch(0.145 0 0);
@@ -106,6 +115,14 @@
     --good: #0ca30c;
     --warn: #fab219;
     --critical: #e66767;
+    --acct-1: #3987e5;
+    --acct-2: #d95926;
+    --acct-3: #199e70;
+    --acct-4: #c98500;
+    --acct-5: #d55181;
+    --acct-6: #008300;
+    --acct-7: #9085e9;
+    --acct-8: #e66767;
     --chart-grid: oklch(0.3 0 0);
     --background: oklch(0.16 0 0);
     --foreground: oklch(0.985 0 0);

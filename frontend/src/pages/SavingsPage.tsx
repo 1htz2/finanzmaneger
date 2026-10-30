@@ -2,6 +2,7 @@ import { Archive, ArrowUpFromLine, CalendarCheck, Pencil, PiggyBank, Plus, Targe
 import { useMemo, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
+import { AccountPicker, NO_ACCOUNT, accountIdOrNull } from '@/components/AccountPicker'
 import { BalanceChart, UsageBar } from '@/components/charts'
 import { EmptyState, ErrorState, LoadingState, Money, PageHeader, StatTile, errorMessage } from '@/components/common'
 import { MoneyInput } from '@/components/MoneyInput'
@@ -58,7 +59,7 @@ export function SavingsPage() {
         <EmptyState
           icon={<Target />}
           title="Noch keine Sparziele"
-          text="Zum Beispiel Notfallreserve 3.000 €, neuer Laptop 2.000 € oder Urlaub 1.500 €."
+          text="Zum Beispiel neuer Laptop 2.000 €, Urlaub 1.500 € oder Führerschein 2.500 €. Deine Notfallreserve richtest du unter Reserve ein."
           action={
             <Button onClick={() => setGoalDialog('new')}>
               <Plus /> Erstes Sparziel anlegen
@@ -336,11 +337,12 @@ function WithdrawDialog({ open, goals, free, onClose }: { open: boolean; goals: 
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
   const [goalId, setGoalId] = useState('none')
+  const [accountId, setAccountId] = useState(NO_ACCOUNT)
   const key = useMemo(() => (open ? newIdempotencyKey() : ''), [open])
   const save = useFinanceMutation(() => {
     const cents = parseEuroInput(amount)
     if (!cents) throw new Error('Bitte einen gültigen Betrag eingeben')
-    return api.post('/savings/withdraw', { amount_cents: cents, reason, goal_id: goalId === 'none' ? null : Number(goalId) }, key)
+    return api.post('/savings/withdraw', { amount_cents: cents, reason, goal_id: goalId === 'none' ? null : Number(goalId), account_id: accountIdOrNull(accountId) }, key)
   })
   return (
     <ResponsiveDialog
@@ -365,6 +367,7 @@ function WithdrawDialog({ open, goals, free, onClose }: { open: boolean; goals: 
               setAmount('')
               setReason('')
               setGoalId('none')
+              setAccountId(NO_ACCOUNT)
               onClose()
             },
             onError: (err) => toast.error(errorMessage(err)),
@@ -391,6 +394,7 @@ function WithdrawDialog({ open, goals, free, onClose }: { open: boolean; goals: 
             </SelectContent>
           </Select>
         </div>
+        <AccountPicker id="sw-account" label="Von Anlageort" value={accountId} onChange={setAccountId} />
         <div className="space-y-1.5">
           <Label htmlFor="sw-reason">Grund</Label>
           <Input id="sw-reason" value={reason} onChange={(e) => setReason(e.target.value)} required maxLength={255} />

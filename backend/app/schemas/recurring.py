@@ -42,6 +42,7 @@ class RecurringOut(Schema):
     due_date: date | None
     active: bool
     description: str | None
+    debt_id: int | None
     monthly_equivalent_cents: int
     created_at: datetime
     updated_at: datetime

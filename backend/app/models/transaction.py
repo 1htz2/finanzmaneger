@@ -36,6 +36,7 @@ class Transaction(Base):
             name="transfer_shape",
         ),
         CheckConstraint("income_kind != 'salary' OR income_target = 'period'", name="salary_targets_period"),
+        CheckConstraint("debt_id IS NULL OR type = 'expense'", name="debt_only_on_expense"),
         Index("ix_transactions_period_type", "period_id", "type"),
     )
 
@@ -52,6 +53,8 @@ class Transaction(Base):
         ForeignKey("recurring_expenses.id", ondelete="SET NULL"), index=True
     )
     is_recurring: Mapped[bool] = mapped_column(default=False)
+    # Set when the expense repays a debt; lowers that debt's remaining amount.
+    debt_id: Mapped[int | None] = mapped_column(ForeignKey("debts.id", ondelete="SET NULL"), index=True)
     income_kind: Mapped[IncomeKind | None] = mapped_column(str_enum(IncomeKind, "income_kind"))
     income_target: Mapped[Pot | None] = mapped_column(str_enum(Pot, "income_target"))
     transfer_from: Mapped[Pot | None] = mapped_column(str_enum(Pot, "transfer_from"))

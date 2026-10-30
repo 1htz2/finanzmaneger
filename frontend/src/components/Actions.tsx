@@ -4,8 +4,13 @@ import { SalaryDialog } from '@/components/SalaryDialog'
 import { TransactionDialog, type TransactionDialogState, type TxTab } from '@/components/TransactionDialog'
 import type { Transaction } from '@/lib/types'
 
+type AddTransactionOptions = { tab?: TxTab } & Pick<
+  TransactionDialogState,
+  'presetCategoryId' | 'presetDebtId' | 'presetAmountCents' | 'presetDescription'
+>
+
 interface Actions {
-  addTransaction: (opts?: { tab?: TxTab; presetCategoryId?: number }) => void
+  addTransaction: (opts?: AddTransactionOptions) => void
   editTransaction: (t: Transaction) => void
   recordSalary: () => void
 }
@@ -21,7 +26,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
   const addTransaction = useCallback<Actions['addTransaction']>(
     (opts) => {
       setSession((n) => n + 1)
-      setTx({ open: true, tab: opts?.tab, presetCategoryId: opts?.presetCategoryId })
+      setTx({ open: true, ...opts })
     },
     [],
   )

@@ -26,7 +26,7 @@ from app.schemas.misc import (
 )
 from app.schemas.periods import PeriodSummaryOut
 from app.schemas.transactions import CategoryRef
-from app.services import ledgers, pots, recurring
+from app.services import debts, ledgers, pots, recurring
 from app.services.periods import active_period, list_periods, summarize
 from app.services.settings import get_app_settings
 from app.services.transactions import list_transactions
@@ -98,6 +98,7 @@ def dashboard(db: Session) -> DashboardOut:
     return DashboardOut(
         active_period=summary,
         reserve_balance_cents=reserve,
+        debt_remaining_cents=debts.overview(db).total_remaining_cents,
         savings=SavingsSummaryOut(
             balance_cents=balance, allocated_cents=allocated, unallocated_cents=balance - allocated
         ),

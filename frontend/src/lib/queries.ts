@@ -7,6 +7,8 @@ import type {
   Category,
   CategoryBreakdown,
   Dashboard,
+  DebtsOverview,
+  Wealth,
   Goal,
   PeriodDetail,
   PeriodSummary,
@@ -36,6 +38,7 @@ export interface TransactionFilters {
   max_amount?: number
   period_id?: number
   is_recurring?: boolean
+  debt_id?: number
   sort?: string
   order?: 'asc' | 'desc'
   limit?: number
@@ -89,6 +92,10 @@ export const useRecurringOverview = () =>
 export const useReserve = () => useQuery({ queryKey: ['fin', 'reserve'], queryFn: () => api.get<Reserve>('/reserve') })
 
 export const useSavings = () => useQuery({ queryKey: ['fin', 'savings'], queryFn: () => api.get<Savings>('/savings') })
+
+export const useWealth = () => useQuery({ queryKey: ['fin', 'wealth'], queryFn: () => api.get<Wealth>('/wealth') })
+
+export const useDebts = () => useQuery({ queryKey: ['fin', 'debts'], queryFn: () => api.get<DebtsOverview>('/debts') })
 
 export const useGoals = () =>
   useQuery({ queryKey: ['fin', 'goals'], queryFn: () => api.get<Goal[]>('/savings/goals') })

@@ -59,6 +59,20 @@ Das Budget einer Periode ist ebenfalls eine Summe: die Zeilen in `budget_allocat
 
 Sparziele erzeugen kein Geld. Eine Zuweisung an ein Sparziel markiert einen Teil des vorhandenen Ersparten. Die Summe aller Zuweisungen darf das Ersparte nie übersteigen. Das Vermögen erscheint deshalb nie doppelt.
 
+Die Notfallreserve ist diese Reserve mit einem Ziel. Das Ziel steht in `settings.reserve_minimum_cents`. `POST /api/reserve/setup` setzt es und bucht einen optionalen Startbestand als `deposit`, beides in einer Transaktion und gegen doppeltes Absenden geschützt. Liegt die Reserve unter dem Ziel, zeigt das Dashboard einen Hinweis (Stufe *info*), keine Warnung, weil eine Reserve im Aufbau normal ist.
+
+## Schulden sind Ausgaben mit Verweis
+
+Eine Schuld (`debts`) speichert nur, was bei der Erfassung offen war (`opening_balance_cents`). Die Restschuld ist dieser Betrag minus alle Ausgaben mit `debt_id`. Eine Rate ist also eine gewöhnliche Ausgabe: Sie verbraucht Budget genau einmal, und es gibt keinen zweiten Topf, der dasselbe Geld noch einmal zählt. Löschen oder Ändern der Ausgabe ändert die Restschuld automatisch. Eine Rückzahlung darf die Restschuld nicht übersteigen. Schulden mit Rückzahlungen werden archiviert statt gelöscht. Wird die Rate beim Erfassen als Fixkosten eingeplant, trägt der Plan die `debt_id`, und „Bezahlt buchen“ tilgt die Schuld.
+
+## Anlageorte sagen, wo das Ersparte liegt
+
+Ein Anlageort (`accounts`) ist ein Konto, Depot oder Bargeld. `account_entries` ist ein eigenes Kontobuch: Jede Zeile ordnet einen Teil der Ersparnisse einem Ort zu. Das Sparen-Kontobuch bleibt unverändert die einzige Quelle für die Höhe der Ersparnisse. Nach jedem Schreibvorgang gelten zwei Regeln, geprüft in `accounts.check_invariants`: Kein Ort ist im Minus, und alle Orte zusammen halten nie mehr als die Ersparnisse. Der Rest heißt „ohne Anlageort“. Sparziele (wofür) und Anlageorte (wo) sind unabhängig voneinander und erzeugen beide kein Geld.
+
+Beim Gehalt verteilt `auto_split` die Sparrate nach `savings_share_bp` mit dem Largest-Remainder-Verfahren; ein Teilindex erlaubt pro Periode und Ort nur eine solche Zeile. Eine Gehaltskorrektur behält die Verhältnisse der Periode bei. Entnahmen, Umbuchungen und Einnahmen können einen Ort nennen; ein Storno spiegelt dessen Zeilen.
+
+Depotwerte (`account_valuations`) sind Momentaufnahmen. Gespeichert wird auch der gebuchte Betrag zum Zeitpunkt der Bewertung, sodass der Gewinn fest bleibt, wenn später Geld dazukommt. Aktueller Wert = gebuchter Betrag + letzter Gewinn. Die Reserve liegt höchstens an einem Ort (`holds_reserve`, Teilindex) und wird dort nur zur Anzeige mitgezählt. Nettovermögen = Ersparnisse + Kursgewinne + Reserve − Restschulden.
+
 ## Umbuchungen schaffen kein Geld
 
 Eine Umbuchung, etwa von der Reserve ins Sparen, ist weder Einnahme noch Ausgabe. Sie besteht aus zwei gleich großen Zeilen mit entgegengesetztem Vorzeichen in zwei Töpfen. Die Summe über alle Töpfe bleibt gleich. Ein Test prüft genau das. Eine Umbuchung aus einem Topf ist nur bis zu dessen verfügbarem Stand erlaubt.
@@ -108,12 +122,14 @@ Ohne erwarteten Zahltag nimmt die Fixkostenübersicht einen Monat ab Periodenbeg
 | Tabelle | Zweck |
 |---|---|
 | `users`, `sessions` | Konto und serverseitige Sitzungen |
-| `settings` | Genau eine Zeile: Budgetmodell, Reserve-Mindesthöhe, Schwelle für große Ausgaben, Verwendungszwecke der Reserve |
+| `settings` | Genau eine Zeile: Budgetmodell, Ziel der Notfallreserve, Schwelle für große Ausgaben, Verwendungszwecke der Reserve |
 | `categories` | Kategorien je Art (Freizeit, Fixkosten, Einnahmen), eindeutig je Art und Name |
 | `budget_periods` | Gehaltsperioden mit Status, Zeitraum und festgeschriebenem Ergebnis |
 | `budget_allocations` | Zeilen, deren Summe das Budget je Topf und Periode ergibt |
 | `transactions` | Ausgaben, Einnahmen (Gehalt und weitere) und Umbuchungen. CHECK-Constraints erzwingen die gültige Form je Typ. |
-| `recurring_expenses` | Geplante Fixkosten mit Intervall und optionalem Fälligkeitsdatum |
+| `recurring_expenses` | Geplante Fixkosten mit Intervall, optionalem Fälligkeitsdatum und optionaler Schuld |
+| `debts` | Eigene Schulden. Die Restschuld ergibt sich aus den zugeordneten Ausgaben. |
+| `accounts`, `account_entries`, `account_valuations` | Anlageorte, Kontobuch je Ort und manuell eingetragene Depotwerte |
 | `reserve_entries` | Kontobuch der Reserve |
 | `savings_entries` | Kontobuch der Ersparnisse |
 | `savings_goals`, `savings_allocations` | Sparziele und die Zuweisung von Erspartem an sie |

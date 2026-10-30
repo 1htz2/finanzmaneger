@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.core import clock
 from app.core.errors import DomainValidationError, NotFoundError
-from app.domain.enums import ReserveKind, SavingsKind
+from app.domain.budget_models import Bucket
+from app.domain.enums import AccountEntryKind, ReserveKind, SavingsKind
 from app.domain.money import basis_points, format_eur
-from app.models import ReserveEntry, SavingsAllocation, SavingsEntry, SavingsGoal
+from app.models import BudgetPeriod, ReserveEntry, SavingsAllocation, SavingsEntry, SavingsGoal
 from app.schemas.pots import (
     BalancePoint,
     GoalAllocateIn,
@@ -19,12 +20,13 @@ from app.schemas.pots import (
     ReserveDepositIn,
     ReserveEntryOut,
     ReserveOut,
+    ReserveSetupIn,
     ReserveWithdrawIn,
     SavingsEntryOut,
     SavingsOut,
     SavingsWithdrawIn,
 )
-from app.services import ledgers
+from app.services import accounts, ledgers, periods
 from app.services.settings import get_app_settings
 
 
@@ -71,7 +73,24 @@ def reserve_overview(db: Session) -> ReserveOut:
         history=_running_balance(rows),
         total_from_periods_cents=from_periods,
         total_withdrawn_cents=withdrawn,
+        monthly_spending_cents=_monthly_spending(db),
     )
+
+
+def _monthly_spending(db: Session) -> int | None:
+    latest = db.scalar(select(BudgetPeriod).order_by(BudgetPeriod.started_at.desc()).limit(1))
+    if latest is None:
+        return None
+    statuses = periods.bucket_statuses(db, latest.id)
+    return statuses[Bucket.FIXED].budget + statuses[Bucket.LEISURE].budget
+
+
+def reserve_setup(db: Session, data: ReserveSetupIn) -> ReserveOut:
+    """Set the emergency-reserve target and optionally book money that already exists."""
+    get_app_settings(db).reserve_minimum_cents = data.target_cents
+    ledgers.book_reserve(db, data.starting_cents, ReserveKind.DEPOSIT, clock.now(), note="Startbestand")
+    db.flush()
+    return reserve_overview(db)
 
 
 def reserve_deposit(db: Session, data: ReserveDepositIn) -> ReserveEntryOut:
@@ -247,5 +266,8 @@ def savings_withdraw(db: Session, data: SavingsWithdrawIn) -> SavingsEntryOut:
     entry = ledgers.book_savings(
         db, -data.amount_cents, SavingsKind.WITHDRAWAL, clock.now(), note=data.reason
     )
+    if data.account_id is not None:
+        accounts.book(db, data.account_id, -data.amount_cents, AccountEntryKind.WITHDRAWAL, note=data.reason)
+    accounts.check_invariants(db)
     db.flush()
     return SavingsEntryOut.model_validate(entry)
